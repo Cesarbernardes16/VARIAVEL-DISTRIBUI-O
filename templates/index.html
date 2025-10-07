@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xadrez de Equipes</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; background-color: #f4f4f9; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 2em; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1, h2 { color: #333; }
+        form { margin-bottom: 2em; }
+        select, button { padding: 0.8em; font-size: 1em; border-radius: 4px; border: 1px solid #ccc; }
+        button { background-color: #007bff; color: white; cursor: pointer; }
+        .report { border: 1px solid #eee; padding: 1.5em; border-radius: 8px; }
+        .report h3 { margin-top: 0; }
+        .fixed-team, .visitors { margin-top: 1em; }
+        .fixed-team p, .visitors p { margin: 0.5em 0; }
+        .visitors { color: #555; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Análise de Equipes</h1>
+        <form action="/" method="get">
+            <label for="motorista_cod">Selecione um Motorista:</label>
+            <select name="motorista_cod" id="motorista_cod">
+                <option value="">-- Todos --</option>
+                {% for motorista in motoristas %}
+                    <option value="{{ motorista.COD }}" {% if motorista.COD == motorista_selecionado_cod %}selected{% endif %}>
+                        {{ motorista.MOTORISTA }}
+                    </option>
+                {% endfor %}
+            </select>
+            <button type="submit">Gerar Relatório</button>
+        </form>
+
+        {% if relatorio %}
+            <div class="report">
+                <h2>Relatório da Equipe de: {{ relatorio.nome_motorista }} (COD: {{ relatorio.cod_motorista }})</h2>
+                <p><strong>Total de Viagens no Período:</strong> {{ relatorio.total_viagens }}</p>
+                
+                <div class="fixed-team">
+                    <h3>Equipe Fixa</h3>
+                    {% for membro in relatorio.equipe_fixa %}
+                        <p><strong>{{ membro.posicao }}:</strong> {{ membro.nome_ajudante }} ({{ membro.viagens }} viagens)</p>
+                    {% else %}
+                        <p>Nenhum membro fixo encontrado.</p>
+                    {% endfor %}
+                </div>
+
+                {% if relatorio.visitantes %}
+                    <div class="visitors">
+                        <h3>Ajudantes de Outras Equipes (Visitantes)</h3>
+                        {% for visitante in relatorio.visitantes %}
+                            <p>{{ visitante.nome_visitante }} ({{ visitante.viagens }} viagem(ns)) - (Equipe Principal: {{ visitante.nome_motorista_principal }})</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
