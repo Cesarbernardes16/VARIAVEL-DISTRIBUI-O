@@ -3,59 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xadrez de Equipes</title>
+    <title>Análise de Equipes</title>
     <style>
         body { font-family: sans-serif; margin: 2em; background-color: #f4f4f9; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 2em; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .container { max-width: 95%; margin: auto; background: white; padding: 2em; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         h1, h2 { color: #333; }
-        form { margin-bottom: 2em; }
-        select, button { padding: 0.8em; font-size: 1em; border-radius: 4px; border: 1px solid #ccc; }
-        button { background-color: #007bff; color: white; cursor: pointer; }
-        .report { border: 1px solid #eee; padding: 1.5em; border-radius: 8px; }
-        .report h3 { margin-top: 0; }
-        .fixed-team, .visitors { margin-top: 1em; }
-        .fixed-team p, .visitors p { margin: 0.5em 0; }
-        .visitors { color: #555; }
+        form { margin-bottom: 2em; display: flex; flex-wrap: wrap; gap: 1.5em; align-items: flex-end; }
+        .form-group { display: flex; flex-direction: column; }
+        .radio-group { display: flex; gap: 1em; align-items: center; padding-top: 0.5em; }
+        label { margin-bottom: 0.3em; font-size: 0.9em; color: #555; }
+        select, input, button { padding: 0.8em; font-size: 1em; border-radius: 4px; border: 1px solid #ccc; }
+        button { background-color: #007bff; color: white; cursor: pointer; border: none; }
+        .summary-table { border: 1px solid #eee; padding: 1.5em; border-radius: 8px; margin-top: 2em;}
+        table { width: 100%; border-collapse: collapse; margin-top: 1em; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+        th { background-color: #f2f2f2; }
+        details { cursor: pointer; }
+        summary { font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Análise de Equipes</h1>
+        
         <form action="/" method="get">
-            <label for="motorista_cod">Selecione um Motorista:</label>
-            <select name="motorista_cod" id="motorista_cod">
-                <option value="">-- Todos --</option>
-                {% for motorista in motoristas %}
-                    <option value="{{ motorista.COD }}" {% if motorista.COD == motorista_selecionado_cod %}selected{% endif %}>
-                        {{ motorista.MOTORISTA }}
-                    </option>
-                {% endfor %}
-            </select>
-            <button type="submit">Gerar Relatório</button>
+            <div class="form-group">
+                <label for="mes">Mês:</label>
+                <select name="mes" id="mes">{% for mes in meses %}<option value="{{ mes.num }}" {% if mes.num == mes_selecionado %}selected{% endif %}>{{ mes.nome }}</option>{% endfor %}</select>
+            </div>
+            <div class="form-group">
+                <label for="ano">Ano:</label>
+                <input type="number" name="ano" id="ano" value="{{ ano_selecionado }}" style="width: 80px;">
+            </div>
+            <div class="form-group">
+                <label>Visão Geral:</label>
+                <div class="radio-group">
+                    <input type="radio" id="view_fixas" name="view_mode" value="equipas_fixas" {% if view_mode == 'equipas_fixas' %}checked{% endif %}>
+                    <label for="view_fixas">Equipas Fixas</label>
+                    <input type="radio" id="view_resumo" name="view_mode" value="resumo_detalhado" {% if view_mode == 'resumo_detalhado' %}checked{% endif %}>
+                    <label for="view_resumo">Resumo Detalhado</label>
+                </div>
+            </div>
+            <button type="submit">Gerar</button>
         </form>
 
-        {% if relatorio %}
-            <div class="report">
-                <h2>Relatório da Equipe de: {{ relatorio.nome_motorista }} (COD: {{ relatorio.cod_motorista }})</h2>
-                <p><strong>Total de Viagens no Período:</strong> {{ relatorio.total_viagens }}</p>
-                
-                <div class="fixed-team">
-                    <h3>Equipe Fixa</h3>
-                    {% for membro in relatorio.equipe_fixa %}
-                        <p><strong>{{ membro.posicao }}:</strong> {{ membro.nome_ajudante }} ({{ membro.viagens }} viagens)</p>
-                    {% else %}
-                        <p>Nenhum membro fixo encontrado.</p>
-                    {% endfor %}
-                </div>
-
-                {% if relatorio.visitantes %}
-                    <div class="visitors">
-                        <h3>Ajudantes de Outras Equipes (Visitantes)</h3>
-                        {% for visitante in relatorio.visitantes %}
-                            <p>{{ visitante.nome_visitante }} ({{ visitante.viagens }} viagem(ns)) - (Equipe Principal: {{ visitante.nome_motorista_principal }})</p>
+        {% if dashboard_equipas %}
+            <div class="summary-table">
+                <h2>Dashboard de Equipas Fixas para {{ meses[mes_selecionado-1].nome }}/{{ ano_selecionado }}</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>MOTORISTA (VIAGENS)</th>
+                            <th>COD</th>
+                            <th>MOTORISTA 2</th>
+                            <th>COD 2</th>
+                            <th>AJUDANTE 1</th>
+                            <th>CÓDJ. 1</th>
+                            <th>AJUDANTE 2</th>
+                            <th>CÓDJ. 2</th>
+                            <th>AJUDANTE 3</th>
+                            <th>CÓDJ. 3</th>
+                            <th>OBSERVAÇÕES (VISITANTES)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for linha in dashboard_equipas %}
+                        <tr>
+                            <td><strong>{{ linha.get('MOTORISTA', '') }}</strong></td>
+                            <td>{{ linha.get('COD', '') }}</td>
+                            <td>{{ linha.get('MOTORISTA_2', '') }}</td>
+                            <td>{{ linha.get('COD_2', '') }}</td>
+                            <td>{{ linha.get('AJUDANTE_1', '') }}</td>
+                            <td>{{ linha.get('CODJ_1', '') }}</td>
+                            <td>{{ linha.get('AJUDANTE_2', '') }}</td>
+                            <td>{{ linha.get('CODJ_2', '') }}</td>
+                            <td>{{ linha.get('AJUDANTE_3', '') }}</td>
+                            <td>{{ linha.get('CODJ_3', '') }}</td>
+                            <td>
+                                {% if linha.get('VISITANTES') %}
+                                <details>
+                                    <summary>{{ linha.get('VISITANTES')|length }} Visitante(s)</summary>
+                                    {% for visitante in linha.get('VISITANTES') %}
+                                        {{ visitante }}<br>
+                                    {% endfor %}
+                                </details>
+                                {% endif %}
+                            </td>
+                        </tr>
                         {% endfor %}
-                    </div>
-                {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+        {% elif resumo_viagens %}
+            <div class="summary-table">
+                <h2>Resumo Detalhado para {{ meses[mes_selecionado-1].nome }}/{{ ano_selecionado }}</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>MOTORISTA</th>
+                            <th>COD</th>
+                            <th>MOTORISTA 2</th>
+                            <th>COD 2</th>
+                            <th>AJUDANTE 1</th>
+                            <th>CODJ_1</th>
+                            <th>AJUDANTE 2</th>
+                            <th>CODJ_2</th>
+                            <th>AJUDANTE 3</th>
+                            <th>CODJ_3</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for viagem in resumo_viagens %}
+                        <tr>
+                            <td>{{ viagem.get('MOTORISTA', '') }}</td>
+                            <td>{{ viagem.get('COD', '') }}</td>
+                            <td>{{ viagem.get('MOTORISTA_2', '') }}</td>
+                            <td>{{ viagem.get('COD_2', '') }}</td>
+                            <td>{{ viagem.get('AJUDANTE_1', '') }}</td>
+                            <td>{{ viagem.get('CODJ_1', '') }}</td>
+                            <td>{{ viagem.get('AJUDANTE_2', '') }}</td>
+                            <td>{{ viagem.get('CODJ_2', '') }}</td>
+                            <td>{{ viagem.get('AJUDANTE_3', '') }}</td>
+                            <td>{{ viagem.get('CODJ_3', '') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+             <div class="summary-table">
+                <p>Nenhum dado encontrado para a seleção atual.</p>
             </div>
         {% endif %}
     </div>
