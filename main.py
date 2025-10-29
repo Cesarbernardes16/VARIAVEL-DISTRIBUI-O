@@ -116,7 +116,7 @@ async def ler_relatorio(request: Request, mes: Optional[int] = None, ano: Option
         if view_mode == 'equipas_fixas':
             dashboard_equipas = gerar_dashboard_equipas_fixas(df)
         else: 
-            colunas_resumo = ['MOTORISTA', 'COD', 'MOTORISTA_2', 'COD_2', 'AJUDANTE_1', 'CODJ_1', 'AJUDANTE_2', 'CODJ_2', 'AJUDANTE_3', 'CODJ_3']
+            colunas_resumo = ['MAPA', 'MOTORISTA', 'COD', 'MOTORISTA_2', 'COD_2', 'AJUDANTE_1', 'CODJ_1', 'AJUDANTE_2', 'CODJ_2', 'AJUDANTE_3', 'CODJ_3']
             colunas_existentes = [col for col in colunas_resumo if col in df.columns]
             resumo_df = df[colunas_existentes].sort_values(by='MOTORISTA')
             resumo_df.fillna('', inplace=True) # Substitui NaN/None por string vazia
