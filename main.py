@@ -8,6 +8,7 @@ from supabase import create_client, Client
 import datetime
 import calendar
 from typing import Optional
+import unicodedata  # <--- ADICIONADO para limpeza de texto
 
 # --- CONFIGURAÇÃO INICIAL ---
 load_dotenv()
@@ -19,8 +20,43 @@ supabase: Client = create_client(url, key)
 NOME_DA_TABELA = "Distribuição"
 NOME_COLUNA_DATA = "DATA"
 
+# --- FUNÇÃO DE LIMPEZA DE TEXTO (CORREÇÃO DE ENCODING E MAIÚSCULAS) ---
+def limpar_texto(text):
+    """
+    Converte para maiúsculas e remove todos os acentos e caracteres 
+    inválidos (como '') de uma string.
+    """
+    if not isinstance(text, str):
+        return text
+    
+    # 1. Converte para maiúsculas (ex: "João" -> "JOÃO")
+    text_upper = text.upper()
+    
+    # 2. Normaliza para 'NFKD' para separar letras de acentos
+    #    (ex: "JOÃO" -> "JOA~O")
+    nfkd_form = unicodedata.normalize('NFKD', text_upper)
+    
+    # 3. Codifica para ASCII 'ignorando' o que não for ASCII (remove acentos e '')
+    #    (ex: "JOA~O" -> b"JOAO")
+    ascii_bytes = nfkd_form.encode('ASCII', 'ignore')
+    
+    # 4. Decodifica de volta para uma string limpa
+    #    (ex: b"JOAO" -> "JOAO")
+    return ascii_bytes.decode('utf-8')
+# --- FIM DA FUNÇÃO ---
+
+
 # --- LÓGICA DE ANÁLISE: DASHBOARD DE EQUIPAS FIXAS (VERSÃO FINAL) ---
 def gerar_dashboard_equipas_fixas(df: pd.DataFrame):
+    
+    # --- CONSTANTES DE REGRA DE NEGÓCIO (MELHORIA) ---
+    RATIO_SIGNIFICANCIA_FIXO = 0.40  # 40%
+    MIN_VIAGENS_PARA_ATIVAR_REGRA_ESTRITA = 10
+    MIN_VIAGENS_MOTORISTA_REGRA_ESTRITA = 15
+    LIMITE_VISITANTE_ESTRITO = 2  # (mostrar > 2, ou seja, 3 ou mais)
+    LIMITE_VISITANTE_PADRAO = 1   # (mostrar > 1, ou seja, 2 ou mais)
+    # -------------------------------------
+    
     ajudantes_dfs = []
     for i in [1, 2, 3]:
         aj_col, cod_col = f'AJUDANTE_{i}', f'CODJ_{i}'
@@ -99,10 +135,9 @@ def gerar_dashboard_equipas_fixas(df: pd.DataFrame):
             is_primary_fixed = motorista_fixo_map.get(viagem_data['cod_ajudante']) == cod_motorista
     
             # Condição 2: O ajudante viajou uma % significativa das viagens TOTAIS do motorista? (Nova Regra)
-            # Define "significativo" como > 40% das viagens do motorista.
-            # Isso captura ajudantes que viajam muito com um motorista, mesmo se não forem seu "principal".
+            # Define "significativo" como > 40% (RATIO_SIGNIFICANCIA_FIXO) das viagens do motorista.
             significance_ratio = (viagem_data['num_viagens'] / total_viagens) if total_viagens > 0 else 0
-            is_significant = significance_ratio > 0.40
+            is_significant = significance_ratio > RATIO_SIGNIFICANCIA_FIXO
     
             # O ajudante é "Fixo" para este motorista se QUALQUER UMA das condições for verdadeira
             if is_primary_fixed or is_significant:
@@ -115,7 +150,7 @@ def gerar_dashboard_equipas_fixas(df: pd.DataFrame):
         # 2. Processar os fixos e verificar a condição (> 10 viagens)
         tem_fixo_acima_de_10 = False
         for fixo in viagens_fixas:
-            if fixo['num_viagens'] > 10:
+            if fixo['num_viagens'] > MIN_VIAGENS_PARA_ATIVAR_REGRA_ESTRITA:
                 tem_fixo_acima_de_10 = True
             
             posicao_str = fixo['posicao_fixa'].replace(' ', '_')
@@ -124,15 +159,15 @@ def gerar_dashboard_equipas_fixas(df: pd.DataFrame):
             info_linha[cod_posicao_str] = fixo['cod_ajudante']
 
         # 3. Definir o limite de viagens para visitantes com base nas condições
-        condicao_motorista = total_viagens > 15
+        condicao_motorista = total_viagens > MIN_VIAGENS_MOTORISTA_REGRA_ESTRITA
         condicao_ajudante_fixo = tem_fixo_acima_de_10
         
         # Regra Padrão: mostrar > 1 (ou seja, 2 ou mais)
-        limite_minimo_visitante = 1 
+        limite_minimo_visitante = LIMITE_VISITANTE_PADRAO 
 
         if condicao_motorista and condicao_ajudante_fixo:
             # Regra Estrita: mostrar > 2 (ou seja, 3 ou mais)
-            limite_minimo_visitante = 2 
+            limite_minimo_visitante = LIMITE_VISITANTE_ESTRITO
 
         # 4. Processar os visitantes com base no limite definido
         for visitante in viagens_visitantes:
@@ -163,23 +198,65 @@ async def ler_relatorio(request: Request, mes: Optional[int] = None, ano: Option
     ultimo_dia_num = calendar.monthrange(ano_selecionado, mes_selecionado)[1]
     ultimo_dia_str = f"{ano_selecionado}-{mes_selecionado:02d}-{ultimo_dia_num}"
 
-    query = supabase.table(NOME_DA_TABELA).select("*").gte(NOME_COLUNA_DATA, primeiro_dia_str).lte(NOME_COLUNA_DATA, ultimo_dia_str).limit(5000)
-    response = query.execute()
-    
-    dados = response.data
-    df = pd.DataFrame(dados)
-
+    # --- MELHORIA: Tratamento de Erros e Paginação ---
+    df = pd.DataFrame()
     resumo_viagens, dashboard_equipas = [], None
+    error_message = None
+    
+    try:
+        # MELHORIA: Implementa paginação para buscar TODOS os dados (remove .limit(5000))
+        dados_completos = []
+        page_size = 1000  # Buscar de 1000 em 1000
+        page = 0
+        while True:
+            query = (
+                supabase.table(NOME_DA_TABELA)
+                .select("*")
+                .gte(NOME_COLUNA_DATA, primeiro_dia_str)
+                .lte(NOME_COLUNA_DATA, ultimo_dia_str)
+                .range(page * page_size, (page + 1) * page_size - 1)
+            )
+            response = query.execute()
+            
+            if not response.data:
+                break # Sai do loop se não houver mais dados
+                
+            dados_completos.extend(response.data)
+            page += 1
+            
+            # Otimização: para se a última página não estava cheia
+            if len(response.data) < page_size:
+                break
+        
+        if not dados_completos:
+            error_message = "Nenhum dado encontrado para a seleção atual."
+        else:
+            df = pd.DataFrame(dados_completos)
+
+    except Exception as e:
+        print(f"Erro ao buscar dados do Supabase: {e}")
+        error_message = "Erro ao conectar ao banco de dados. Tente novamente mais tarde."
+        # Mesmo com erro, continuamos para renderizar a página com a mensagem
+    # --- FIM DA MELHORIA ---
 
     if not df.empty:
+        
+        # --- CORREÇÃO DE ENCODING E MAIÚSCULAS ---
+        # Aplica a função de limpeza em todas as colunas de texto (tipo 'object')
+        for col in df.select_dtypes(include=['object']):
+            df[col] = df[col].apply(limpar_texto)
+        # --- FIM DA CORREÇÃO ---
+        
         # Garante que a coluna COD existe antes de tentar processá-la
         if 'COD' in df.columns:
             df['COD'] = pd.to_numeric(df['COD'], errors='coerce')
             df.dropna(subset=['COD'], inplace=True)
             df['COD'] = df['COD'].astype(int)
         else:
-            # Se não houver 'COD', retorna vazio para evitar erros
+             # Se não houver 'COD', retorna vazio para evitar erros
              df = pd.DataFrame() 
+             if not error_message: # Só define msg de erro se já não houver uma
+                 error_message = "A coluna 'COD' principal não foi encontrada nos dados."
 
     if not df.empty:
         if view_mode == 'equipas_fixas':
@@ -210,5 +287,5 @@ async def ler_relatorio(request: Request, mes: Optional[int] = None, ano: Option
         "meses": meses_do_ano,
         "mes_selecionado": mes_selecionado,
         "ano_selecionado": ano_selecionado,
+        "error_message": error_message  # <-- ADICIONADO para mostrar erros
     })
-
