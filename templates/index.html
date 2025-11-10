@@ -5,62 +5,132 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Análise de Equipes</title>
     <style>
-        body { font-family: sans-serif; margin: 2em; background-color: #f4f4f9; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 2em; background-color: #f4f4f9; }
         .container { max-width: 95%; margin: auto; background: white; padding: 2em; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         h1, h2 { color: #333; }
         
-        /* --- ESTILOS DO FORMULÁRIO (MELHORADOS) --- */
         form { 
             margin-bottom: 2em; 
             display: flex; 
             flex-wrap: wrap; 
-            gap: 1.5em; /* Aumenta o espaçamento */
+            gap: 1.5em;
             align-items: flex-end; 
         }
+        
         .form-group { 
             display: flex; 
             flex-direction: column; 
-            min-width: 120px; /* Ajuda no alinhamento */
+            flex-grow: 1;
         }
-        .radio-group { display: flex; gap: 1em; align-items: center; padding-top: 0.5em; }
-        label { margin-bottom: 0.3em; font-size: 0.9em; color: #555; }
-        select, input, button { padding: 0.8em; font-size: 1em; border-radius: 4px; border: 1px solid #ccc; }
-        button { background-color: #007bff; color: white; cursor: pointer; border: none; }
-        /* Estilo do botão desativado (para feedback de loading) */
-        button:disabled {
-            background-color: #aaa;
-            cursor: not-allowed;
+        
+        .date-group {
+            display: flex;
+            flex-direction: row;
+            gap: 0.5em;
+            flex-grow: 0;
+        }
+        
+        input[type="date"] {
+            padding: 0.7em;
+            line-height: 1.25;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+        
+        .sr-only {
+            position: absolute; width: 1px; height: 1px;
+            padding: 0; margin: -1px; overflow: hidden;
+            clip: rect(0, 0, 0, 0); border: 0;
         }
 
-        .summary-table { border: 1px solid #eee; padding: 1.5em; border-radius: 8px; margin-top: 2em;}
+        label { margin-bottom: 0.3em; font-size: 0.9em; color: #555; font-weight: 500; }
         
-        /* --- MELHORIA: TABELA RESPONSIVA --- */
-        .table-wrapper {
-            overflow-x: auto; /* Permite scroll horizontal em ecrãs pequenos */
+        /* --- ESTILOS DE BOTÃO E PESQUISA ATUALIZADOS --- */
+
+        /* --- NOVO: Estilo de Grupo de Botões (Sem Borda Externa) --- */
+        .button-group { 
+            display: flex; 
+            gap: 0.5em; /* Espaçamento entre os botões */
+        }
+        .button-group input[type="radio"] { 
+            display: none; 
+        }
+        .button-group label {
+            padding: 0.8em 1.2em; 
+            margin: 0; 
+            cursor: pointer;
+            /* Estilo Inativo (como na imagem) */
+            background-color: #fff; 
+            color: #333;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+            font-size: 0.9em; 
+            font-weight: 500;
+        }
+        /* Estilo Ativo (botão azul) */
+        .button-group input[type="radio"]:checked + label { 
+            background-color: #007bff; 
+            color: white; 
+            border-color: #007bff;
+        }
+
+        /* --- NOVO: Barra de Pesquisa com Botão Embutido --- */
+        
+        /* O .form-group da barra de pesquisa vai crescer mais */
+        .search-bar {
+            flex-grow: 2; /* Faz a barra de pesquisa ocupar mais espaço */
+            flex-basis: 350px; /* Tamanho mínimo */
+        }
+
+        .search-container {
+            position: relative; /* Contexto para o ícone e o botão */
             width: 100%;
-            margin-top: 1em;
-        }
-        .table-wrapper table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            /* margin-top: 1em; (movido para o wrapper) */
         }
         
+        /* Ícone de Pesquisa (dentro, à esquerda) */
+        .search-container svg {
+            position: absolute;
+            left: 1em;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #888;
+            pointer-events: none; /* Para poder clicar no input "através" do ícone */
+        }
+        
+        /* Input de Pesquisa */
+        .search-container input {
+            width: 100%;
+            padding: 0.8em 130px 0.8em 3em; /* Padding: Top/Bottom, Direita (para o botão), Esquerda (para o ícone) */
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1em;
+        }
+        
+        /* Botão Gerar (dentro, à direita) */
+        .search-container button {
+            position: absolute;
+            right: 5px; /* 5px da borda direita */
+            top: 5px;   /* 5px da borda de cima */
+            bottom: 5px; /* 5px da borda de baixo */
+            border: none;
+            background: #007bff;
+            color: white;
+            border-radius: 6px;
+            padding: 0 1.5em;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* --- Estilos da Tabela e Erro (sem alterações) --- */
+        .summary-table { border: 1px solid #eee; padding: 1.5em; border-radius: 8px; margin-top: 2em;}
+        .table-wrapper { overflow-x: auto; width: 100%; margin-top: 1em; }
+        .table-wrapper table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
         th { background-color: #f2f2f2; }
         details { cursor: pointer; }
         summary { font-weight: bold; }
-
-        /* --- MELHORIA: ESTILO PARA MENSAGEM DE ERRO --- */
-        .error-box {
-            background-color: #fff0f0;
-            border: 1px solid #e0b0b0;
-            color: #a00;
-            padding: 1.5em;
-            border-radius: 8px;
-            margin-top: 2em;
-        }
-
+        .error-box { background-color: #fff0f0; border: 1px solid #e0b0b0; color: #a00; padding: 1.5em; border-radius: 8px; margin-top: 2em; }
     </style>
 </head>
 <body>
@@ -68,26 +138,44 @@
         <h1>Análise de Equipes</h1>
         
         <form action="/" method="get">
-            <div class="form-group">
-                <label for="mes">Mês:</label>
-                <select name="mes" id="mes">{% for mes in meses %}<option value="{{ mes.num }}" {% if mes.num == mes_selecionado %}selected{% endif %}>{{ mes.nome }}</option>{% endfor %}</select>
+            
+            <div class="form-group date-group">
+                <div>
+                    <label for="data_inicio">De:</label>
+                    <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio_selecionada }}">
+                </div>
+                <div>
+                    <label for="data_fim">Até:</label>
+                    <input type="date" name="data_fim" id="data_fim" value="{{ data_fim_selecionada }}">
+                </div>
             </div>
+
             <div class="form-group">
-                <label for="ano">Ano:</label>
-                <input type="number" name="ano" id="ano" value="{{ ano_selecionado }}" style="width: 80px;">
-            </div>
-            <div class="form-group">
-                <label>Visão Geral:</label>
-                <div class="radio-group">
+                <label for="view_fixas">Visualização:</label>
+                <div class="button-group">
                     <input type="radio" id="view_fixas" name="view_mode" value="equipas_fixas" {% if view_mode == 'equipas_fixas' %}checked{% endif %}>
                     <label for="view_fixas">Equipas Fixas</label>
+                    
                     <input type="radio" id="view_resumo" name="view_mode" value="resumo_detalhado" {% if view_mode == 'resumo_detalhado' %}checked{% endif %}>
                     <label for="view_resumo">Detalhado</label>
                 </div>
             </div>
-            <button type="submit">Gerar</button>
-        </form>
 
+            <div class="form-group search-bar">
+                <label for="search_query" class="sr-only">Buscar por nome</label>
+                
+                <div class="search-container">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                    </svg>
+                    
+                    <input type="text" name="search_query" id="search_query" placeholder="Buscar por nome..." value="{{ search_query }}">
+                    
+                    <button type="submit">Gerar</button>
+                </div>
+            </div>
+
+            </form>
         {% if error_message %}
             <div class="error-box">
                 <p><strong>{{ error_message }}</strong></p>
@@ -95,13 +183,12 @@
         
         {% elif dashboard_equipas %}
             <div class="summary-table">
-                <h2>Dashboard de Equipas Fixas para {{ meses[mes_selecionado-1].nome }}/{{ ano_selecionado }}</h2>
-                
+                <h2>Dashboard de Equipas Fixas ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
                 <div class="table-wrapper">
                     <table>
                         <thead>
                             <tr>
-                                <th>MOTORISTA (VIAGENS)</th>
+                                <th>MOTORISTA (DIAS)</th>
                                 <th>COD</th>
                                 <th>MOTORISTA 2</th>
                                 <th>COD 2</th>
@@ -146,8 +233,7 @@
 
         {% elif resumo_viagens %}
             <div class="summary-table">
-                <h2>Resumo Detalhado para {{ meses[mes_selecionado-1].nome }}/{{ ano_selecionado }}</h2>
-                
+                <h2>Resumo Detalhado ({{ data_inicio_seleciona }} até {{ data_fim_selecionada }})</h2>
                 <div class="table-wrapper">
                     <table>
                         <thead>
@@ -188,8 +274,8 @@
         
         {% else %}
              <div class="summary-table">
-                <p>Nenhum dado encontrado para a seleção atual.</p>
-            </div>
+                <p>Nenhum dado encontrado para o período selecionado.</p>
+             </div>
         {% endif %}
     </div>
 
