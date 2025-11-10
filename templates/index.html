@@ -9,136 +9,115 @@
         .container { max-width: 95%; margin: auto; background: white; padding: 2em; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         h1, h2 { color: #333; }
         
-        form { 
-            margin-bottom: 2em; 
-            display: flex; 
-            flex-wrap: wrap; 
-            gap: 1.5em;
-            align-items: flex-end; 
-        }
-        
-        .form-group { 
-            display: flex; 
-            flex-direction: column; 
-            flex-grow: 1;
-        }
-        
-        .date-group {
-            display: flex;
-            flex-direction: row;
-            gap: 0.5em;
-            flex-grow: 0;
-        }
-        
-        input[type="date"] {
-            padding: 0.7em;
-            line-height: 1.25;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-        }
-        
-        .sr-only {
-            position: absolute; width: 1px; height: 1px;
-            padding: 0; margin: -1px; overflow: hidden;
-            clip: rect(0, 0, 0, 0); border: 0;
-        }
-
+        form { margin-bottom: 2em; display: flex; flex-wrap: wrap; gap: 1.5em; align-items: flex-end; }
+        .form-group { display: flex; flex-direction: column; flex-grow: 1; }
+        .date-group { display: flex; flex-direction: row; gap: 0.5em; flex-grow: 0; }
+        input[type="date"] { padding: 0.7em; line-height: 1.25; border-radius: 6px; border: 1px solid #ccc; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
         label { margin-bottom: 0.3em; font-size: 0.9em; color: #555; font-weight: 500; }
-        
-        /* --- ESTILOS DE BOTÃO E PESQUISA ATUALIZADOS --- */
 
-        /* --- NOVO: Estilo de Grupo de Botões (Sem Borda Externa) --- */
-        .button-group { 
-            display: flex; 
-            gap: 0.5em; /* Espaçamento entre os botões */
+        /* --- ESTILOS DE NAVEGAÇÃO E ABAS --- */
+        .main-nav {
+            width: 100%;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 2em;
+            display: flex;
+            gap: 1em;
         }
-        .button-group input[type="radio"] { 
-            display: none; 
-        }
-        .button-group label {
-            padding: 0.8em 1.2em; 
-            margin: 0; 
+        .nav-tab {
+            padding: 0.8em 1.5em;
             cursor: pointer;
-            /* Estilo Inativo (como na imagem) */
-            background-color: #fff; 
-            color: #333;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            transition: background-color 0.2s;
-            font-size: 0.9em; 
-            font-weight: 500;
-        }
-        /* Estilo Ativo (botão azul) */
-        .button-group input[type="radio"]:checked + label { 
-            background-color: #007bff; 
-            color: white; 
-            border-color: #007bff;
-        }
-
-        /* --- NOVO: Barra de Pesquisa com Botão Embutido --- */
-        
-        /* O .form-group da barra de pesquisa vai crescer mais */
-        .search-bar {
-            flex-grow: 2; /* Faz a barra de pesquisa ocupar mais espaço */
-            flex-basis: 350px; /* Tamanho mínimo */
-        }
-
-        .search-container {
-            position: relative; /* Contexto para o ícone e o botão */
-            width: 100%;
-        }
-        
-        /* Ícone de Pesquisa (dentro, à esquerda) */
-        .search-container svg {
-            position: absolute;
-            left: 1em;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #888;
-            pointer-events: none; /* Para poder clicar no input "através" do ícone */
-        }
-        
-        /* Input de Pesquisa */
-        .search-container input {
-            width: 100%;
-            padding: 0.8em 130px 0.8em 3em; /* Padding: Top/Bottom, Direita (para o botão), Esquerda (para o ícone) */
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 1em;
-        }
-        
-        /* Botão Gerar (dentro, à direita) */
-        .search-container button {
-            position: absolute;
-            right: 5px; /* 5px da borda direita */
-            top: 5px;   /* 5px da borda de cima */
-            bottom: 5px; /* 5px da borda de baixo */
-            border: none;
-            background: #007bff;
-            color: white;
-            border-radius: 6px;
-            padding: 0 1.5em;
+            font-size: 1.1em;
             font-weight: 600;
-            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 6px 6px 0 0;
+            background: #f1f1f1;
+            color: #555;
+        }
+        .nav-tab.active {
+            background: #fff;
+            border-color: #ccc;
+            color: #007bff;
+            border-bottom: 1px solid #fff; /* Cobre a borda principal */
+            margin-bottom: -1px; /* Puxa para cima, sobrepondo a borda */
         }
 
-        /* --- Estilos da Tabela e Erro (sem alterações) --- */
+        .button-group { display: flex; gap: 0.5em; }
+        .button-group input[type="radio"] { display: none; }
+        .button-group label {
+            padding: 0.8em 1.2em; margin: 0; cursor: pointer;
+            background-color: #fff; color: #333;
+            border: 1px solid #ccc; border-radius: 6px;
+            font-size: 0.9em; font-weight: 500;
+        }
+        .button-group input[type="radio"]:checked + label { 
+            background-color: #007bff; color: white; border-color: #007bff;
+        }
+
+        .search-bar { flex-grow: 2; flex-basis: 350px; }
+        .search-container { position: relative; width: 100%; }
+        .search-container svg { position: absolute; left: 1em; top: 50%; transform: translateY(-50%); color: #888; pointer-events: none; }
+        .search-container input { width: 100%; padding: 0.8em 130px 0.8em 3em; border: 1px solid #ccc; border-radius: 6px; font-size: 1em; }
+        .search-container button {
+            position: absolute; right: 5px; top: 5px; bottom: 5px;
+            border: none; background: #007bff; color: white;
+            border-radius: 6px; padding: 0 1.5em; font-weight: 600; cursor: pointer;
+        }
+
+        /* --- ESTILOS DE TABELA --- */
         .summary-table { border: 1px solid #eee; padding: 1.5em; border-radius: 8px; margin-top: 2em;}
         .table-wrapper { overflow-x: auto; width: 100%; margin-top: 1em; }
-        .table-wrapper table { width: 100%; border-collapse: collapse; }
+        table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
         th { background-color: #f2f2f2; }
         details { cursor: pointer; }
         summary { font-weight: bold; }
         .error-box { background-color: #fff0f0; border: 1px solid #e0b0b0; color: #a00; padding: 1.5em; border-radius: 8px; margin-top: 2em; }
+    
+        /* --- NOVOS ESTILOS PARA TABELA DE INCENTIVO --- */
+        .incentivo-table th, .incentivo-table td {
+            padding: 10px 12px;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 0.95em;
+        }
+        .incentivo-table th {
+            background-color: #e9ecef;
+            color: #333;
+            font-weight: 600;
+        }
+        .incentivo-table .col-nome { text-align: left; width: 25%; }
+        .incentivo-table .col-cpf, .incentivo-table .col-cod { text-align: left; width: 10%; }
+        
+        .meta-row { background-color: #fffb8f; font-weight: bold; }
+        .pass { background-color: #d4edda; color: #155724; font-weight: bold; }
+        .fail { background-color: #f8d7da; color: #721c24; }
+        .total-row { background-color: #007bff; color: white; font-weight: bold; }
+        .total-row td { font-size: 1.1em; }
+
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Análise de Equipes</h1>
         
-        <form action="/" method="get">
+        <div class="main-nav">
+            <div id="nav-xadrez" class="nav-tab {% if main_tab == 'xadrez' %}active{% endif %}">
+                Análise (Xadrez)
+            </div>
+            <div id="nav-incentivo" class="nav-tab {% if main_tab == 'incentivo' %}active{% endif %}">
+                Incentivo
+            </div>
+        </div>
+
+        <form action="/" method="get" id="main-form">
+            <input type="hidden" name="main_tab" value="{{ main_tab }}">
             
+            {% if main_tab == 'xadrez' %}
+                <input type="hidden" name="view_mode" value="{{ view_mode }}">
+            {% endif %}
+
             <div class="form-group date-group">
                 <div>
                     <label for="data_inicio">De:</label>
@@ -150,80 +129,127 @@
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="view_fixas">Visualização:</label>
-                <div class="button-group">
-                    <input type="radio" id="view_fixas" name="view_mode" value="equipas_fixas" {% if view_mode == 'equipas_fixas' %}checked{% endif %}>
-                    <label for="view_fixas">Equipas Fixas</label>
-                    
-                    <input type="radio" id="view_resumo" name="view_mode" value="resumo_detalhado" {% if view_mode == 'resumo_detalhado' %}checked{% endif %}>
-                    <label for="view_resumo">Detalhado</label>
+            {% if main_tab == 'xadrez' %}
+                <div class="form-group">
+                    <label>Visualização (Xadrez):</label>
+                    <div class="button-group">
+                        <input type="radio" id="view_fixas" name="view_mode" value="equipas_fixas" {% if view_mode == 'equipas_fixas' %}checked{% endif %}>
+                        <label for="view_fixas">Equipas Fixas</label>
+                        <input type="radio" id="view_resumo" name="view_mode" value="resumo_detalhado" {% if view_mode == 'resumo_detalhado' %}checked{% endif %}>
+                        <label for="view_resumo">Detalhado</label>
+                    </div>
                 </div>
-            </div>
 
-            <div class="form-group search-bar">
-                <label for="search_query" class="sr-only">Buscar por nome</label>
-                
-                <div class="search-container">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
-                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
-                    </svg>
-                    
-                    <input type="text" name="search_query" id="search_query" placeholder="Buscar por nome..." value="{{ search_query }}">
-                    
-                    <button type="submit">Gerar</button>
+                <div class="form-group search-bar">
+                    <label for="search_query" class="sr-only">Buscar por nome</label>
+                    <div class="search-container">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>
+                        <input type="text" name="search_query" id="search_query" placeholder="Buscar por nome..." value="{{ search_query }}">
+                        <button type="submit">Gerar</button>
+                    </div>
                 </div>
-            </div>
+            
+            {% elif main_tab == 'incentivo' %}
+                <div class="form-group search-bar">
+                    <div class="search-container">
+                        <button type="submit" style="position: relative; width: 100%; right: 0; top: 0; bottom: 0; padding: 0.8em;">
+                            Atualizar Período
+                        </button>
+                    </div>
+                </div>
+            {% endif %}
+        </form>
 
-            </form>
         {% if error_message %}
             <div class="error-box">
                 <p><strong>{{ error_message }}</strong></p>
             </div>
-        
-        {% elif dashboard_equipas %}
+        {% endif %}
+
+
+        {% if main_tab == 'xadrez' %}
+            
+            {% if dashboard_equipas %}
+                <div class="summary-table">
+                    <h2>Dashboard de Equipas Fixas ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
+                    <div class="table-wrapper">
+                        </div>
+                </div>
+            {% elif resumo_viagens %}
+                <div class="summary-table">
+                    <h2>Resumo Detalhado ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
+                    <div class="table-wrapper">
+                        </div>
+                </div>
+            {% else %}
+                <div class="summary-table">
+                    <p>Nenhum dado encontrado para o período ou filtro selecionado.</p>
+                </div>
+            {% endif %}
+
+        {% elif main_tab == 'incentivo' %}
+            
             <div class="summary-table">
-                <h2>Dashboard de Equipas Fixas ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
+                <h2>Incentivos: Motoristas ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
+                <p>(Resultados de incentivo são baseados em dados de exemplo)</p>
                 <div class="table-wrapper">
-                    <table>
+                    <table class="incentivo-table">
                         <thead>
                             <tr>
-                                <th>MOTORISTA (DIAS)</th>
-                                <th>COD</th>
-                                <th>MOTORISTA 2</th>
-                                <th>COD 2</th>
-                                <th>AJUDANTE 1</th>
-                                <th>CÓDJ. 1</th>
-                                <th>AJUDANTE 2</th>
-                                <th>CÓDJ. 2</th>
-                                <th>AJUDANTE 3</th>
-                                <th>CÓDJ. 3</th>
-                                <th>OBSERVAÇÕES (VISITANTES)</th>
+                                <th class="col-cpf">CPF</th>
+                                <th class="col-cod">COD</th>
+                                <th class="col-nome">NOME</th>
+                                <th colspan="2">DEVOLUÇÃO PDV TT</th>
+                                <th colspan="2">RATING TX RESPOSTA</th>
+                                <th colspan="2">REFUGO</th>
+                                <th>TOTAL</th>
+                            </tr>
+                            <tr class="meta-row">
+                                <th colspan="3">METAS</th>
+                                <td>{{ metas.get('dev_pdv_meta', 'N/A') }}</td>
+                                <td>R$ {{ "%.2f"|format(metas.get('dev_pdv_premio', 0)) }}</td>
+                                <td>{{ metas.get('rating_meta', 'N/A') }}</td>
+                                <td>R$ {{ "%.2f"|format(metas.get('rating_premio', 0)) }}</td>
+                                <td>{{ metas.get('refugo_meta', 'N/A') }}</td>
+                                <td>R$ {{ "%.2f"|format(metas.get('refugo_premio', 0)) }}</td>
+                                <td>R$ {{ "%.2f"|format(metas.get('dev_pdv_premio', 0) + metas.get('rating_premio', 0) + metas.get('refugo_premio', 0)) }}</td>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for linha in dashboard_equipas %}
+                            {% for m in incentivo_motoristas %}
                             <tr>
-                                <td><strong>{{ linha.get('MOTORISTA', '') }}</strong></td>
-                                <td>{{ linha.get('COD', '') }}</td>
-                                <td>{{ linha.get('MOTORISTA_2', '') }}</td>
-                                <td>{{ linha.get('COD_2', '') }}</td>
-                                <td>{{ linha.get('AJUDANTE_1', '') }}</td>
-                                <td>{{ linha.get('CODJ_1', '') }}</td>
-                                <td>{{ linha.get('AJUDANTE_2', '') }}</td>
-                                <td>{{ linha.get('CODJ_2', '') }}</td>
-                                <td>{{ linha.get('AJUDANTE_3', '') }}</td>
-                                <td>{{ linha.get('CODJ_3', '') }}</td>
-                                <td>
-                                    {% if linha.get('VISITANTES') %}
-                                    <details>
-                                        <summary>{{ linha.get('VISITANTES')|length }} Visitante(s)</summary>
-                                        {% for visitante in linha.get('VISITANTES') %}
-                                            {{ visitante }}<br>
-                                        {% endfor %}
-                                    </details>
-                                    {% endif %}
+                                <td class="col-cpf">{{ m.cpf }}</td>
+                                <td class="col-cod">{{ m.cod }}</td>
+                                <td class="col-nome">{{ m.nome }}</td>
+                                
+                                <td class="{% if m.dev_pdv_premio_val > 0 %}pass{% else %}fail{% endif %}">
+                                    {{ m.dev_pdv_val }}
                                 </td>
+                                <td class="{% if m.dev_pdv_premio_val > 0 %}pass{% else %}fail{% endif %}">
+                                    R$ {{ "%.2f"|format(m.dev_pdv_premio_val) }}
+                                </td>
+                                
+                                <td class="{% if m.rating_premio_val > 0 %}pass{% else %}fail{% endif %}">
+                                    {{ m.rating_val }}
+                                </td>
+                                <td class="{% if m.rating_premio_val > 0 %}pass{% else %}fail{% endif %}">
+                                    R$ {{ "%.2f"|format(m.rating_premio_val) }}
+                                </td>
+                                
+                                <td class="{% if m.refugo_premio_val > 0 %}pass{% else %}fail{% endif %}">
+                                    {{ m.refugo_val }}
+                                </td>
+                                <td class="{% if m.refugo_premio_val > 0 %}pass{% else %}fail{% endif %}">
+                                    R$ {{ "%.2f"|format(m.refugo_premio_val) }}
+                                </td>
+
+                                <td class="total-row">
+                                    R$ {{ "%.2f"|format(m.total_premio) }}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="10">Nenhum dado de motorista encontrado.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -231,55 +257,61 @@
                 </div>
             </div>
 
-        {% elif resumo_viagens %}
             <div class="summary-table">
-                <h2>Resumo Detalhado ({{ data_inicio_seleciona }} até {{ data_fim_selecionada }})</h2>
+                <h2>Incentivos: Ajudantes ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
                 <div class="table-wrapper">
-                    <table>
+                    <table class="incentivo-table">
                         <thead>
                             <tr>
-                                <th>MAPA</th>
-                                <th>MOTORISTA</th>
-                                <th>COD</th>
-                                <th>MOTORISTA 2</th>
-                                <th>COD 2</th>
-                                <th>AJUDANTE 1</th>
-                                <th>CODJ_1</th>
-                                <th>AJUDANTE 2</th>
-                                <th>CODJ_2</th>
-                                <th>AJUDANTE 3</th>
-                                <th>CODJ_3</th>
+                                <th class="col-cod">COD</th>
+                                <th class="col-nome">NOME AJUDANTE</th>
+                                <th class="col-nome">MOTORISTA FIXO</th>
+                                <th>PRÊMIO TOTAL HERDADO</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for viagem in resumo_viagens %}
+                            {% if not incentivo_ajudantes %}
                             <tr>
-                                <td>{{ viagem.get('MAPA', '') }}</td>
-                                <td>{{ viagem.get('MOTORISTA', '') }}</td>
-                                <td>{{ viagem.get('COD', '') }}</td>
-                                <td>{{ viagem.get('MOTORISTA_2', '') }}</td>
-                                <td>{{ viagem.get('COD_2', '') }}</td>
-                                <td>{{ viagem.get('AJUDANTE_1', '') }}</td>
-                                <td>{{ viagem.get('CODJ_1', '') }}</td>
-                                <td>{{ viagem.get('AJUDANTE_2', '') }}</td>
-                                <td>{{ viagem.get('CODJ_2', '') }}</td>
-                                <td>{{ viagem.get('AJUDANTE_3', '') }}</td>
-                                <td>{{ viagem.get('CODJ_3', '') }}</td>
+                                <td colspan="4">
+                                    A lógica para vincular ajudantes aos motoristas fixos ainda será implementada.
+                                </td>
                             </tr>
-                            {% endfor %}
+                            {% else %}
+                                {% endif %}
                         </tbody>
                     </table>
                 </div>
             </div>
-        
-        {% else %}
-             <div class="summary-table">
-                <p>Nenhum dado encontrado para o período selecionado.</p>
-             </div>
+
         {% endif %}
+
     </div>
 
     <script>
+        // --- SCRIPT PARA CONTROLAR AS ABAS ---
+        const form = document.getElementById('main-form');
+        const mainTabInput = document.querySelector('input[name="main_tab"]');
+        
+        // Função para submeter o formulário com a aba correta
+        function changeTab(tabName) {
+            mainTabInput.value = tabName;
+            form.submit();
+        }
+
+        // Adiciona listeners aos botões das abas
+        document.getElementById('nav-xadrez').addEventListener('click', function() {
+            if (mainTabInput.value !== 'xadrez') {
+                changeTab('xadrez');
+            }
+        });
+        
+        document.getElementById('nav-incentivo').addEventListener('click', function() {
+            if (mainTabInput.value !== 'incentivo') {
+                changeTab('incentivo');
+            }
+        });
+
+        // --- SCRIPT PARA O BOTÃO DE CARREGAMENTO (Inalterado) ---
         document.querySelector('form').addEventListener('submit', function() {
             var btn = document.querySelector('button[type="submit"]');
             if (btn) {

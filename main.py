@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from supabase import create_client, Client
@@ -21,7 +21,7 @@ supabase: Client = create_client(url, key)
 NOME_DA_TABELA = "Distribuição"
 NOME_COLUNA_DATA = "DATA"
 
-# --- FUNÇÃO DE LIMPEZA DE TEXTO (Inalterada) ---
+# --- FUNÇÃO DE LIMPEZA DE TEXTO ---
 def limpar_texto(text):
     if not isinstance(text, str):
         return text
@@ -30,7 +30,8 @@ def limpar_texto(text):
     ascii_bytes = nfkd_form.encode('ASCII', 'ignore')
     return ascii_bytes.decode('utf-8')
 
-# --- LÓGICA DE ANÁLISE (Funções Auxiliares Inalteradas) ---
+# --- LÓGICA DE ANÁLISE "XADREZ" (Funções Principais) ---
+# (Estas funções são a base do "motor" do xadrez)
 
 def _preparar_dataframe_ajudantes(df: pd.DataFrame) -> pd.DataFrame:
     ajudantes_dfs = []
@@ -41,9 +42,10 @@ def _preparar_dataframe_ajudantes(df: pd.DataFrame) -> pd.DataFrame:
         cod_col = f'CODJ_{num}'
         
         if cod_col in df.columns:
-            temp_df = df[['COD', aj_col, cod_col]].copy()
+            temp_df = df[['COD', 'MOTORISTA', aj_col, cod_col]].copy() # Adicionado MOTORISTA
             temp_df.rename(columns={
                 'COD': 'MOTORISTA_COD', 
+                'MOTORISTA': 'MOTORISTA_NOME', # Adicionado NOME
                 aj_col: 'AJUDANTE_NOME', 
                 cod_col: 'AJUDANTE_COD'
             }, inplace=True)
@@ -51,7 +53,7 @@ def _preparar_dataframe_ajudantes(df: pd.DataFrame) -> pd.DataFrame:
             ajudantes_dfs.append(temp_df)
             
     if not ajudantes_dfs:
-        return pd.DataFrame(columns=['MOTORISTA_COD', 'AJUDANTE_NOME', 'AJUDANTE_COD', 'POSICAO'])
+        return pd.DataFrame(columns=['MOTORISTA_COD', 'MOTORISTA_NOME', 'AJUDANTE_NOME', 'AJUDANTE_COD', 'POSICAO'])
 
     df_global_melted = pd.concat(ajudantes_dfs)
     df_global_melted.dropna(subset=['AJUDANTE_NOME'], inplace=True)
@@ -74,11 +76,16 @@ def _calcular_mapas_referencia(df_melted: pd.DataFrame, df_original: pd.DataFram
     ).to_dict()
     contagem_viagens_motorista = df_original['COD'].value_counts().to_dict()
     
+    # --- NOVO MAPA ---
+    # Cria um mapa de COD Motorista -> NOME Motorista
+    motorista_nome_map = df_original.drop_duplicates(subset=['COD']).set_index('COD')['MOTORISTA'].to_dict()
+    
     return {
         "motorista_fixo_map": motorista_fixo_map,
         "posicao_fixa_map": posicao_fixa_map,
         "nome_ajudante_map": nome_ajudante_map,
-        "contagem_viagens_motorista": contagem_viagens_motorista
+        "contagem_viagens_motorista": contagem_viagens_motorista,
+        "motorista_nome_map": motorista_nome_map # <-- Adicionado
     }
 
 def _classificar_e_atribuir_viagens(
@@ -125,7 +132,8 @@ def _classificar_e_atribuir_viagens(
         if visitante['num_viagens'] > limite_minimo_visitante:
             info_linha['VISITANTES'].append(f"{visitante['nome_ajudante'].strip()} ({visitante['num_viagens']}x)")
 
-def gerar_dashboard_equipas_fixas(df: pd.DataFrame) -> List[Dict[str, Any]]:
+# --- ALTERAÇÃO: Função agora retorna os mapas e o df_melted ---
+def gerar_dashboard_e_mapas(df: pd.DataFrame) -> dict:
     regras = {
         "RATIO_SIGNIFICANCIA_FIXO": 0.40,
         "MIN_VIAGENS_PARA_ATIVAR_REGRA_ESTRITA": 10,
@@ -135,7 +143,11 @@ def gerar_dashboard_equipas_fixas(df: pd.DataFrame) -> List[Dict[str, Any]]:
     }
     df_melted = _preparar_dataframe_ajudantes(df)
     if df_melted.empty:
-        return []
+        return {
+            "dashboard_data": [], 
+            "mapas": {}, 
+            "df_melted": df_melted
+        }
 
     mapas = _calcular_mapas_referencia(df_melted, df)
     
@@ -160,7 +172,7 @@ def gerar_dashboard_equipas_fixas(df: pd.DataFrame) -> List[Dict[str, Any]]:
             'VISITANTES': []
         }
         
-        max_pos = df_melted['POSICAO'].nunique() if not df_melted.empty else 3 # Default 3 se vazio
+        max_pos = df_melted['POSICAO'].nunique() if not df_melted.empty else 3
         for i in range(1, max_pos + 1):
             info_linha[f'AJUDANTE_{i}'] = ''
             info_linha[f'CODJ_{i}'] = ''
@@ -176,26 +188,25 @@ def gerar_dashboard_equipas_fixas(df: pd.DataFrame) -> List[Dict[str, Any]]:
         for key, value in linha.items():
             if value is None:
                 linha[key] = ''
-        
-    return sorted(dashboard_data, key=lambda x: x.get('MOTORISTA') or '')
+    
+    dashboard_final = sorted(dashboard_data, key=lambda x: x.get('MOTORISTA') or '')
+    
+    return {
+        "dashboard_data": dashboard_final,
+        "mapas": mapas,
+        "df_melted": df_melted
+    }
 
-
-# --- ALTERAÇÃO: Função Síncrona atualizada ---
-def processar_dados_sincrono(
-    data_inicio_str: str, 
-    data_fim_str: str, 
-    search_str: str, 
-    view_mode: str
-):
+# --- NOVA FUNÇÃO: Busca de Dados Centralizada ---
+def _get_dados_apurados(data_inicio_str: str, data_fim_str: str, search_str: str):
     """
-    Função bloqueante atualizada para usar data_inicio/data_fim e search_str.
+    Busca dados do Supabase, limpa e filtra.
+    Retorna o DataFrame ou (None, error_message).
     """
     df = pd.DataFrame()
-    resumo_viagens, dashboard_equipas = [], None
     error_message = None
 
     try:
-        # Busca paginada de dados (Bloqueante)
         dados_completos = []
         page_size = 1000
         page = 0
@@ -203,120 +214,236 @@ def processar_dados_sincrono(
             query = (
                 supabase.table(NOME_DA_TABELA)
                 .select("*")
-                .gte(NOME_COLUNA_DATA, data_inicio_str) # <-- ALTERAÇÃO
-                .lte(NOME_COLUNA_DATA, data_fim_str)   # <-- ALTERAÇÃO
+                .gte(NOME_COLUNA_DATA, data_inicio_str)
+                .lte(NOME_COLUNA_DATA, data_fim_str)
                 .range(page * page_size, (page + 1) * page_size - 1)
             )
             response = query.execute()
-            
-            if not response.data:
-                break
+            if not response.data: break
             dados_completos.extend(response.data)
             page += 1
-            if len(response.data) < page_size:
-                break
+            if len(response.data) < page_size: break
         
         if not dados_completos:
-            error_message = "Nenhum dado encontrado para o período selecionado."
-        else:
-            df = pd.DataFrame(dados_completos)
+            return None, "Nenhum dado encontrado para o período selecionado."
+        
+        df = pd.DataFrame(dados_completos)
 
     except Exception as e:
         print(f"Erro ao buscar dados do Supabase: {e}")
-        error_message = "Erro ao conectar ao banco de dados. Tente novamente mais tarde."
-        return resumo_viagens, dashboard_equipas, error_message
+        return None, "Erro ao conectar ao banco de dados."
 
-    if not df.empty:
-        # 1. Limpeza de Texto (Igual a antes)
-        for col in df.select_dtypes(include=['object']):
-            df[col] = df[col].apply(limpar_texto)
-        
-        if 'COD' in df.columns:
-            df['COD'] = pd.to_numeric(df['COD'], errors='coerce')
-            df.dropna(subset=['COD'], inplace=True)
-            df['COD'] = df['COD'].astype(int)
-        else:
-             df = pd.DataFrame() 
-             if not error_message:
-                 error_message = "A coluna 'COD' principal não foi encontrada nos dados."
+    # Limpeza de Texto
+    for col in df.select_dtypes(include=['object']):
+        df[col] = df[col].apply(limpar_texto)
+    
+    if 'COD' in df.columns:
+        df['COD'] = pd.to_numeric(df['COD'], errors='coerce')
+        df.dropna(subset=['COD'], inplace=True)
+        df['COD'] = df['COD'].astype(int)
+    else:
+         return None, "A coluna 'COD' principal não foi encontrada."
 
-    # --- ALTERAÇÃO: Lógica de Filtro de Pesquisa ---
-    if search_str and not df.empty:
+    # Filtro de Pesquisa
+    if search_str:
         search_clean = limpar_texto(search_str)
-        
-        # Define as colunas onde a pesquisa será aplicada
-        colunas_busca = [
-            'MOTORISTA', 'MOTORISTA_2', 
-            'AJUDANTE_1', 'AJUDANTE_2', 'AJUDANTE_3'
-        ]
-        # Garante que só vamos pesquisar em colunas que existem no DataFrame
+        colunas_busca = ['MOTORISTA', 'MOTORISTA_2', 'AJUDANTE_1', 'AJUDANTE_2', 'AJUDANTE_3']
         colunas_existentes_busca = [col for col in colunas_busca if col in df.columns]
-        
-        # Cria uma máscara booleana (inicialmente toda False)
         mask = pd.Series(False, index=df.index)
         for col in colunas_existentes_busca:
-            # Usa .str.contains() para o filtro "like"
-            # | (pipe) significa "OU"
             mask = mask | df[col].str.contains(search_clean, na=False)
-            
-        df = df[mask] # Aplica o filtro ao DataFrame
-        
-        if df.empty and not error_message:
-            error_message = f"Nenhum dado encontrado para o termo de busca: '{search_str}'"
-    # --- FIM DA ALTERAÇÃO ---
+        df = df[mask]
+        if df.empty:
+            return None, f"Nenhum dado encontrado para o termo de busca: '{search_str}'"
 
-    if not df.empty:
-        # 3. Análise de Dados (Igual a antes)
-        if view_mode == 'equipas_fixas':
-            dashboard_equipas = gerar_dashboard_equipas_fixas(df)
-        else: 
-            colunas_resumo = ['MAPA', 'MOTORISTA', 'COD', 'MOTORISTA_2', 'COD_2', 'AJUDANTE_1', 'CODJ_1', 'AJUDANTE_2', 'CODJ_2', 'AJUDANTE_3', 'CODJ_3']
-            colunas_existentes = [col for col in colunas_resumo if col in df.columns]
-            resumo_df = df[colunas_existentes].sort_values(by='MOTORISTA' if 'MOTORISTA' in colunas_existentes else colunas_existentes[0])
-            resumo_df.fillna('', inplace=True)
-            resumo_viagens = resumo_df.to_dict('records')
+    return df, None
+
+
+# --- FUNÇÃO DE PROCESSAMENTO (Aba Xadrez) ---
+def processar_xadrez_sincrono(
+    data_inicio_str: str, 
+    data_fim_str: str, 
+    search_str: str, 
+    view_mode: str
+):
+    resumo_viagens, dashboard_equipas = [], None
+    
+    df, error_message = _get_dados_apurados(data_inicio_str, data_fim_str, search_str)
+    
+    if error_message:
+        return resumo_viagens, dashboard_equipas, error_message
+
+    if view_mode == 'equipas_fixas':
+        # Roda o motor do xadrez e pega apenas o dashboard
+        resultado_xadrez = gerar_dashboard_e_mapas(df)
+        dashboard_equipas = resultado_xadrez["dashboard_data"]
+    else: 
+        # Lógica da vista "Detalhado"
+        colunas_resumo = ['MAPA', 'MOTORISTA', 'COD', 'MOTORISTA_2', 'COD_2', 'AJUDANTE_1', 'CODJ_1', 'AJUDANTE_2', 'CODJ_2', 'AJUDANTE_3', 'CODJ_3']
+        colunas_existentes = [col for col in colunas_resumo if col in df.columns]
+        resumo_df = df[colunas_existentes].sort_values(by='MOTORISTA' if 'MOTORISTA' in colunas_existentes else colunas_existentes[0])
+        resumo_df.fillna('', inplace=True)
+        resumo_viagens = resumo_df.to_dict('records')
 
     return resumo_viagens, dashboard_equipas, error_message
 
-# --- ALTERAÇÃO: Endpoint principal atualizado ---
+# --- FUNÇÃO DE PROCESSAMENTO (Aba Incentivo) ---
+def processar_incentivos_sincrono(data_inicio_str: str, data_fim_str: str):
+    
+    incentivo_motoristas = []
+    incentivo_ajudantes = []
+    error_message = None
+    metas = {}
+
+    try:
+        # --- ETAPA 1: Gerar dados FALSOS (MOCK) para Motoristas ---
+        metas = {
+            "dev_pdv_meta": "2,64%", "dev_pdv_premio": 160.00,
+            "rating_meta": "35,07%", "rating_premio": 100.00,
+            "refugo_meta": "1.0%", "refugo_premio": 100.00
+        }
+        dados_motoristas = [
+            {"cpf": "Não Aparece", "cod": 9999, "nome": "ADEMILSON PANTALEAO (AFASTADO)"}, # COD Fixo para não conflitar
+            {"cpf": "21676141871", "cod": 248, "nome": "ADOLFO RAMOS DA SILVA", "dev_pdv": 4.90, "rating": 20.98, "refugo": None},
+            {"cpf": "92186866153", "cod": 7, "nome": "ALAN CORREIA DOS SANTOS CARDEN", "dev_pdv": 8.00, "rating": 15.20, "refugo": None},
+            {"cpf": "93303068100", "cod": 10, "nome": "ALEXANDER DOS SANTOS COSTA", "dev_pdv": 1.18, "rating": 37.11, "refugo": 0.5},
+            {"cpf": "7600204185", "cod": 192, "nome": "ALEXANDRE AQUINO CACERES", "dev_pdv": 1.21, "rating": 58.18, "refugo": None},
+            {"cpf": "5224088186", "cod": 665, "nome": "ALEXANDRE DOS SANTOS COSTA", "dev_pdv": 0.98, "rating": 25.24, "refugo": None},
+        ]
+        
+        # Mapa para guardar o prémio de cada motorista (COD -> Premio)
+        premio_motorista_map = {}
+
+        for motorista in dados_motoristas:
+            linha = motorista.copy()
+            dev_atingido = linha.get("dev_pdv")
+            linha["dev_pdv_val"] = f"{dev_atingido:.2f}%" if dev_atingido is not None else "N/A"
+            linha["dev_pdv_premio_val"] = metas["dev_pdv_premio"] if (dev_atingido is not None and dev_atingido <= 2.64) else 0.0
+            
+            rating_atingido = linha.get("rating")
+            linha["rating_val"] = f"{rating_atingido:.2f}%" if rating_atingido is not None else "N/A"
+            linha["rating_premio_val"] = metas["rating_premio"] if (rating_atingido is not None and rating_atingido >= 35.07) else 0.0
+
+            refugo_atingido = linha.get("refugo")
+            linha["refugo_val"] = f"{refugo_atingido:.2f}%" if refugo_atingido is not None else "N/A"
+            linha["refugo_premio_val"] = metas["refugo_premio"] if (refugo_atingido is not None and refugo_atingido <= 1.0) else 0.0
+
+            linha["total_premio"] = linha["dev_pdv_premio_val"] + linha["rating_premio_val"] + linha["refugo_premio_val"]
+            incentivo_motoristas.append(linha)
+            
+            # Guarda o prémio total no mapa
+            if linha["cod"]:
+                premio_motorista_map[linha["cod"]] = linha["total_premio"]
+
+        # --- ETAPA 2: Buscar dados reais e ligar Ajudantes ---
+        
+        # Busca os dados reais do período (sem filtro de search, por agora)
+        df, error_message = _get_dados_apurados(data_inicio_str, data_fim_str, search_str="")
+        
+        if error_message and not df:
+            # Se houver um erro, retorna (já foi definido por _get_dados_apurados)
+             return incentivo_motoristas, [], error_message, metas
+
+        # Roda o motor do xadrez para obter os mapas
+        resultado_xadrez = gerar_dashboard_e_mapas(df)
+        mapas = resultado_xadrez["mapas"]
+        df_melted = resultado_xadrez["df_melted"]
+        
+        # Pega o mapa de motoristas fixos
+        motorista_fixo_map = mapas.get("motorista_fixo_map", {})
+        motorista_nome_map = mapas.get("motorista_nome_map", {})
+        
+        # Lista todos os ajudantes únicos que apareceram no período
+        ajudantes_unicos = df_melted.drop_duplicates(subset=['AJUDANTE_COD'])
+        
+        for _, ajudante in ajudantes_unicos.iterrows():
+            cod_ajudante = ajudante['AJUDANTE_COD']
+            nome_ajudante = ajudante['AJUDANTE_NOME']
+            
+            # Encontra o COD do motorista fixo deste ajudante
+            cod_motorista_fixo = motorista_fixo_map.get(cod_ajudante)
+            
+            if cod_motorista_fixo:
+                # Encontra o NOME do motorista fixo
+                nome_motorista_fixo = motorista_nome_map.get(cod_motorista_fixo, "N/A")
+                
+                # Encontra o PRÉMIO total que esse motorista ganhou (do mapa de dados FALSOS)
+                premio_herdado = premio_motorista_map.get(cod_motorista_fixo, 0.00) # Default 0.00
+            else:
+                nome_motorista_fixo = "Sem Fixo Definido"
+                premio_herdado = 0.00
+            
+            incentivo_ajudantes.append({
+                "cod": cod_ajudante,
+                "nome": nome_ajudante,
+                "motorista_fixo": f"{nome_motorista_fixo} (COD: {cod_motorista_fixo or 'N/A'})",
+                "total_premio": premio_herdado
+            })
+            
+        # Ordena a lista de ajudantes por nome
+        incentivo_ajudantes = sorted(incentivo_ajudantes, key=lambda x: x['nome'])
+
+    except Exception as e:
+        print(f"Erro ao gerar dados de incentivo: {e}")
+        error_message = "Erro ao processar dados de incentivo."
+        
+    return incentivo_motoristas, incentivo_ajudantes, error_message, metas
+
+# --- ROTA PRINCIPAL (Atualizada para Abas) ---
 @app.get("/", response_class=HTMLResponse)
 async def ler_relatorio(
     request: Request, 
+    main_tab: str = "xadrez",
     view_mode: str = "equipas_fixas",
     data_inicio: Optional[str] = None,
     data_fim: Optional[str] = None,
     search_query: Optional[str] = None
 ):
     
-    # --- Lógica de Data Padrão ---
     hoje = datetime.date.today()
     if not data_inicio:
-        # Se não houver data de início, assume o primeiro dia do mês atual
         data_inicio = hoje.replace(day=1).isoformat()
     if not data_fim:
-        # Se não houver data de fim, assume o dia de hoje
         data_fim = hoje.isoformat()
-    
-    # Passa a string de pesquisa (mesmo que vazia)
     search_str = search_query or ""
 
-    # Chama a função bloqueante com os novos parâmetros
-    resumo_viagens, dashboard_equipas, error_message = await run_in_threadpool(
-        processar_dados_sincrono,
-        data_inicio,
-        data_fim,
-        search_str,
-        view_mode
-    )
+    resumo_viagens, dashboard_equipas = [], None
+    incentivo_motoristas, incentivo_ajudantes = [], []
+    metas = {}
+    error_message = None
+
+    if main_tab == "xadrez":
+        resumo_viagens, dashboard_equipas, error_message = await run_in_threadpool(
+            processar_xadrez_sincrono,
+            data_inicio,
+            data_fim,
+            search_str,
+            view_mode
+        )
     
-    # --- Renderização do Template com as novas variáveis ---
+    elif main_tab == "incentivo":
+        incentivo_motoristas, incentivo_ajudantes, error_message, metas = await run_in_threadpool(
+            processar_incentivos_sincrono,
+            data_inicio,
+            data_fim
+        )
+    
     return templates.TemplateResponse("index.html", {
         "request": request, 
+        "main_tab": main_tab,
+        "view_mode": view_mode,
+        "data_inicio_selecionada": data_inicio,
+        "data_fim_selecionada": data_fim,
+        "search_query": search_str,
+        "error_message": error_message,
         "resumo_viagens": resumo_viagens,
         "dashboard_equipas": dashboard_equipas,
-        "view_mode": view_mode,
-        "data_inicio_selecionada": data_inicio, # Envia para o HTML
-        "data_fim_selecionada": data_fim,       # Envia para o HTML
-        "search_query": search_str,             # Envia para o HTML
-        "error_message": error_message
+        "incentivo_motoristas": incentivo_motoristas,
+        "incentivo_ajudantes": incentivo_ajudantes,
+        "metas": metas
     })
+
+# --- ROTA DO FAVICON ---
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon_route():
+    return Response(status_code=204)
