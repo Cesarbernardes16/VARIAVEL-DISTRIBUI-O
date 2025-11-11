@@ -9,7 +9,10 @@ from supabase import Client
 # Importa a nossa lógica partilhada
 from core.database import get_dados_apurados
 from core.analysis import gerar_dashboard_e_mapas
-from .metas import _get_metas # Importa as metas do novo router
+# --- ALTERAÇÃO AQUI ---
+# Importa a função com o nome correto
+from .metas import _get_metas_sincrono
+# --- FIM DA ALTERAÇÃO ---
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -24,6 +27,10 @@ def processar_incentivos_sincrono(df: Optional[pd.DataFrame], metas: Dict[str, A
     incentivo_motoristas = []
     incentivo_ajudantes = []
     
+    # Pega as metas específicas
+    metas_motorista = metas.get("motorista", {})
+    metas_ajudante = metas.get("ajudante", {})
+    
     # --- ETAPA 1: Gerar dados FALSOS (MOCK) para Motoristas ---
     dados_motoristas = [
         {"cpf": "Não Aparece", "cod": 9999, "nome": "ADEMILSON PANTALEAO (AFASTADO)"},
@@ -36,42 +43,46 @@ def processar_incentivos_sincrono(df: Optional[pd.DataFrame], metas: Dict[str, A
     
     premio_motorista_map = {}
     default_premio_info = {
-        "dev_pdv_val": "N/A", "dev_pdv_premio_val": 0.0,
-        "rating_val": "N/A", "rating_premio_val": 0.0,
-        "refugo_val": "N/A", "refugo_premio_val": 0.0,
-        "total_premio": 0.0
+        "dev_pdv_val": "N/A", "dev_pdv_passou": False,
+        "rating_val": "N/A", "rating_passou": False,
+        "refugo_val": "N/A", "refugo_passou": False,
     }
 
     for motorista in dados_motoristas:
         linha = motorista.copy()
-        dev_atingido = linha.get("dev_pdv")
-        linha["dev_pdv_val"] = f"{dev_atingido:.2f}%" if dev_atingido is not None else "N/A"
-        linha["dev_pdv_premio_val"] = metas["dev_pdv_premio"] if (dev_atingido is not None and dev_atingido <= metas["dev_pdv_meta_perc"]) else 0.0
         
+        # Lógica de Devolução (Motorista)
+        dev_atingido = linha.get("dev_pdv")
+        dev_passou = (dev_atingido is not None and dev_atingido <= metas_motorista.get("dev_pdv_meta_perc", 0))
+        linha["dev_pdv_val"] = f"{dev_atingido:.2f}%" if dev_atingido is not None else "N/A"
+        linha["dev_pdv_premio_val"] = metas_motorista.get("dev_pdv_premio", 0) if dev_passou else 0.0
+        
+        # Lógica de Rating (Motorista)
         rating_atingido = linha.get("rating")
+        rating_passou = (rating_atingido is not None and rating_atingido >= metas_motorista.get("rating_meta_perc", 0))
         linha["rating_val"] = f"{rating_atingido:.2f}%" if rating_atingido is not None else "N/A"
-        linha["rating_premio_val"] = metas["rating_premio"] if (rating_atingido is not None and rating_atingido >= metas["rating_meta_perc"]) else 0.0
+        linha["rating_premio_val"] = metas_motorista.get("rating_premio", 0) if rating_passou else 0.0
 
+        # Lógica de Refugo (Motorista)
         refugo_atingido = linha.get("refugo")
+        refugo_passou = (refugo_atingido is not None and refugo_atingido <= metas_motorista.get("refugo_meta_perc", 0))
         linha["refugo_val"] = f"{refugo_atingido:.2f}%" if refugo_atingido is not None else "N/A"
-        linha["refugo_premio_val"] = metas["refugo_premio"] if (refugo_atingido is not None and refugo_atingido <= metas["refugo_meta_perc"]) else 0.0
+        linha["refugo_premio_val"] = metas_motorista.get("refugo_premio", 0) if refugo_passou else 0.0
 
         linha["total_premio"] = linha["dev_pdv_premio_val"] + linha["rating_premio_val"] + linha["refugo_premio_val"]
         incentivo_motoristas.append(linha)
         
+        # Salva o RESULTADO (pass/fail) e os VALORES ATINGIDOS no mapa
         if linha["cod"]:
             premio_motorista_map[linha["cod"]] = {
-                "dev_pdv_val": linha["dev_pdv_val"],
-                "dev_pdv_premio_val": linha["dev_pdv_premio_val"],
-                "rating_val": linha["rating_val"],
-                "rating_premio_val": linha["rating_premio_val"],
-                "refugo_val": linha["refugo_val"],
-                "refugo_premio_val": linha["refugo_premio_val"],
-                "total_premio": linha["total_premio"]
+                "dev_pdv_val": linha["dev_pdv_val"], "dev_pdv_passou": dev_passou,
+                "rating_val": linha["rating_val"], "rating_passou": rating_passou,
+                "refugo_val": linha["refugo_val"], "refugo_passou": refugo_passou,
             }
 
     # --- ETAPA 2: Ligar Ajudantes (só se tivermos dados reais) ---
     if df is not None and not df.empty:
+        # O 'df' que recebemos aqui já foi limpo (sem duplicatas)
         resultado_xadrez = gerar_dashboard_e_mapas(df)
         mapas = resultado_xadrez["mapas"]
         df_melted = resultado_xadrez["df_melted"]
@@ -85,17 +96,35 @@ def processar_incentivos_sincrono(df: Optional[pd.DataFrame], metas: Dict[str, A
             nome_ajudante = ajudante['AJUDANTE_NOME']
             cod_motorista_fixo = motorista_fixo_map.get(cod_ajudante)
             
-            premio_info_herdado = default_premio_info.copy()
+            # Pega o resultado (pass/fail) do motorista fixo
+            performance_herdada = default_premio_info.copy()
             if cod_motorista_fixo:
-                premio_info_herdado = premio_motorista_map.get(cod_motorista_fixo, default_premio_info)
+                performance_herdada = premio_motorista_map.get(cod_motorista_fixo, default_premio_info)
+            
+            # --- ALTERAÇÃO: Calcula o prémio do Ajudante ---
+            # O ajudante herda o "pass/fail", mas o prémio é da tabela de ajudantes
+            
+            premio_dev_ajudante = metas_ajudante.get("dev_pdv_premio", 0) if performance_herdada["dev_pdv_passou"] else 0.0
+            premio_rating_ajudante = metas_ajudante.get("rating_premio", 0) if performance_herdada["rating_passou"] else 0.0
+            premio_refugo_ajudante = metas_ajudante.get("refugo_premio", 0) if performance_herdada["refugo_passou"] else 0.0
             
             ajudante_data = {
                 "cpf": "", # CPF em branco
                 "cod": cod_ajudante,
                 "nome": nome_ajudante,
+                
+                "dev_pdv_val": performance_herdada["dev_pdv_val"],
+                "dev_pdv_premio_val": premio_dev_ajudante,
+                
+                "rating_val": performance_herdada["rating_val"],
+                "rating_premio_val": premio_rating_ajudante,
+                
+                "refugo_val": performance_herdada["refugo_val"],
+                "refugo_premio_val": premio_refugo_ajudante,
+                
+                "total_premio": premio_dev_ajudante + premio_rating_ajudante + premio_refugo_ajudante
             }
             
-            ajudante_data.update(premio_info_herdado)
             incentivo_ajudantes.append(ajudante_data)
             
         incentivo_ajudantes = sorted(incentivo_ajudantes, key=lambda x: x['nome'])
@@ -116,9 +145,12 @@ async def ler_relatorio_incentivo(
     data_fim = data_fim or hoje.isoformat()
     
     incentivo_motoristas, incentivo_ajudantes = [], []
-    metas = _get_metas() # Pega as metas
+    
+    # --- ALTERAÇÃO AQUI ---
+    # Busca as metas usando a função correta no threadpool
+    metas = await run_in_threadpool(_get_metas_sincrono, supabase)
+    # --- FIM DA ALTERAÇÃO ---
 
-    # --- ALTERAÇÃO: Chamar get_dados_apurados (síncrono) no threadpool ---
     df, error_message = await run_in_threadpool(
         get_dados_apurados,
         supabase,
@@ -127,12 +159,18 @@ async def ler_relatorio_incentivo(
         search_str=""
     )
     
+    # Remove duplicatas do DataFrame principal
+    if error_message is None and df is not None:
+        if 'MAPA' in df.columns:
+            df = df.drop_duplicates(subset=['MAPA'])
+        else:
+            df = df.drop_duplicates()
+    
     # 2. Processar incentivos (em thread pool)
-    # Passamos o 'df' (mesmo que seja None)
     incentivo_motoristas, incentivo_ajudantes = await run_in_threadpool(
         processar_incentivos_sincrono,
         df,
-        metas
+        metas # Passa o dicionário de metas aninhado
     )
 
     return templates.TemplateResponse("index.html", {
@@ -144,8 +182,7 @@ async def ler_relatorio_incentivo(
         "error_message": error_message,
         "incentivo_motoristas": incentivo_motoristas,
         "incentivo_ajudantes": incentivo_ajudantes,
-        "metas": metas,
-        # Variáveis vazias para o template não falhar
+        "metas": metas, # Passa as metas aninhadas
         "view_mode": "equipas_fixas", 
         "search_query": "",
         "resumo_viagens": [],

@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from typing import Optional
 from fastapi.concurrency import run_in_threadpool
 from supabase import Client
+import pandas as pd # Importe o pandas
 
 # Importa a nossa lógica partilhada
 from core.database import get_dados_apurados
@@ -24,9 +25,15 @@ def processar_xadrez_sincrono(df, view_mode):
         resultado_xadrez = gerar_dashboard_e_mapas(df)
         dashboard_equipas = resultado_xadrez["dashboard_data"]
     else: 
+        # Lógica da vista "Detalhado"
         colunas_resumo = ['MAPA', 'MOTORISTA', 'COD', 'MOTORISTA_2', 'COD_2', 'AJUDANTE_1', 'CODJ_1', 'AJUDANTE_2', 'CODJ_2', 'AJUDANTE_3', 'CODJ_3']
         colunas_existentes = [col for col in colunas_resumo if col in df.columns]
+        
+        # --- ALTERAÇÃO AQUI (REVERSÃO) ---
+        # Removemos o .drop_duplicates() daqui, pois o df já vem limpo
         resumo_df = df[colunas_existentes].sort_values(by='MOTORISTA' if 'MOTORISTA' in colunas_existentes else colunas_existentes[0])
+        # --- FIM DA ALTERAÇÃO ---
+
         resumo_df.fillna('', inplace=True)
         resumo_viagens = resumo_df.to_dict('records')
         
@@ -49,7 +56,6 @@ async def ler_relatorio_xadrez(
     
     resumo_viagens, dashboard_equipas = [], None
 
-    # --- ALTERAÇÃO: Chamar get_dados_apurados (síncrono) no threadpool ---
     df, error_message = await run_in_threadpool(
         get_dados_apurados, 
         supabase, 
@@ -58,6 +64,16 @@ async def ler_relatorio_xadrez(
         search_str
     )
     
+    # --- ALTERAÇÃO AQUI ---
+    # Remove duplicatas do DataFrame principal
+    if error_message is None and df is not None:
+        if 'MAPA' in df.columns:
+            df = df.drop_duplicates(subset=['MAPA'])
+        else:
+            # Fallback caso a coluna MAPA não exista (embora deva existir)
+            df = df.drop_duplicates() 
+    # --- FIM DA ALTERAÇÃO ---
+
     # 2. Processar dados (em thread pool)
     if error_message is None and df is not None:
         resumo_viagens, dashboard_equipas = await run_in_threadpool(
@@ -76,7 +92,6 @@ async def ler_relatorio_xadrez(
         "error_message": error_message,
         "resumo_viagens": resumo_viagens,
         "dashboard_equipas": dashboard_equipas,
-        # Variáveis vazias para o template não falhar
         "incentivo_tab": "motoristas",
         "incentivo_motoristas": [],
         "incentivo_ajudantes": [],

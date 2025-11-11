@@ -88,7 +88,14 @@
         form { margin-bottom: 2em; display: flex; flex-wrap: wrap; gap: 1.5em; align-items: flex-end; }
         .form-group { display: flex; flex-direction: column; flex-grow: 1; }
         .date-group { display: flex; flex-direction: row; gap: 0.5em; flex-grow: 0; }
-        input[type="date"] { padding: 0.7em; line-height: 1.25; border-radius: 6px; border: 1px solid #ccc; }
+        input[type="date"], input[type="number"], input[type="text"] {
+            padding: 0.7em;
+            line-height: 1.25;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 1em;
+        }
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
         label { margin-bottom: 0.3em; font-size: 0.9em; color: #555; font-weight: 500; }
 
@@ -128,12 +135,31 @@
         .search-bar { flex-grow: 2; flex-basis: 350px; }
         .search-container { position: relative; width: 100%; }
         .search-container svg { position: absolute; left: 1em; top: 50%; transform: translateY(-50%); color: #888; pointer-events: none; }
-        .search-container input { width: 100%; padding: 0.8em 130px 0.8em 3em; border: 1px solid #ccc; border-radius: 6px; font-size: 1em; }
+        .search-container input[type="text"] { width: 100%; padding: 0.8em 130px 0.8em 3em; }
         .search-container button {
             position: absolute; right: 5px; top: 5px; bottom: 5px;
             border: none; background: #007bff; color: white;
             border-radius: 6px; padding: 0 1.5em; font-weight: 600; cursor: pointer;
         }
+        
+        button[type="submit"].full-width-btn {
+            position: relative; width: 100%; right: 0; top: 0; bottom: 0; padding: 0.8em;
+            border: none; background: #007bff; color: white;
+            border-radius: 6px; font-weight: 600; cursor: pointer;
+            font-size: 1em;
+        }
+        button[type="submit"].save-btn {
+            background-color: #28a745; /* Verde */
+            color: white;
+            padding: 0.8em 1.5em;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 1em;
+        }
+
 
         /* --- ESTILOS DE TABELA --- */
         .summary-table { border: 1px solid #eee; padding: 1.5em; border-radius: 8px; margin-top: 2em;}
@@ -154,6 +180,25 @@
         .incentivo-table .col-cpf { text-align: left; width: 10%; }
         .incentivo-table .col-cod { text-align: left; width: 10%; }
         
+        /* Estilo para inputs dentro da tabela de metas */
+        .meta-form-table td {
+            text-align: left;
+        }
+        .meta-form-table input[type="number"] {
+            width: 120px;
+            padding: 0.5em;
+        }
+        .meta-form-table .input-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+        }
+        .meta-form-table .input-group-addon {
+            font-weight: 500;
+            color: #555;
+        }
+
+
         .meta-row { background-color: #fffb8f; font-weight: bold; }
         .pass { background-color: #d4edda; color: #155724; font-weight: bold; }
         .fail { background-color: #f8d7da; color: #721c24; }
@@ -181,7 +226,7 @@
                         <path d="M1.5 0A1.5 1.5 0 0 0 0 1.5v13A1.5 1.5 0 0 0 1.5 16h13a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 14.5 0h-13zM2 1h12v1H2V1zm0 2h12v11H2V3z"/>
                         <path d="M5 4.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-4zM10 3.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zM3 3.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zM3 11.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm8 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1z"/>
                     </svg>
-                    Visão Geral (Xadrez)
+                    Visão do Xadrez
                 </a>
             </li>
             <li>
@@ -195,27 +240,18 @@
                 </a>
             </li>
             <li>
-                <a href="/metas?data_inicio={{ data_inicio_selecionada }}&data_fim={{ data_fim_selecionada }}"
-                   class="{% if main_tab == 'metas' %}active{% endif %}">
+                <a href="/metas" class="{% if main_tab == 'metas' %}active{% endif %}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                          <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311a1.464 1.464 0 0 1-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.858 2.929 2.929 0 0 1 0 5.858z"/>
                     </svg>
-                    Painel de Gestão (Metas)
+                    Painel de Metas
                 </a>
             </li>
         </ul>
 
         <div class="sidebar-footer">
             <ul class="sidebar-nav">
-                <li>
-                    <a href="#">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"/>
-                            <path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
-                        </svg>
-                        Sair
-                    </a>
-                </li>
+                <li><a href="#"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"/><path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/></svg>Sair</a></li>
             </ul>
         </div>
     </div>
@@ -240,6 +276,7 @@
                      <input type="hidden" name="incentivo_tab" value="{{ incentivo_tab }}">
                 {% endif %}
 
+                {% if main_tab != 'metas' %}
                 <div class="form-group date-group">
                     <div>
                         <label for="data_inicio">De:</label>
@@ -250,6 +287,7 @@
                         <input type="date" name="data_fim" id="data_fim" value="{{ data_fim_selecionada }}">
                     </div>
                 </div>
+                {% endif %}
 
                 {% if main_tab == 'xadrez' %}
                     <div class="form-group">
@@ -282,21 +320,14 @@
                     </div>
                      <div class="form-group search-bar">
                         <div class="search-container">
-                            <button type="submit" style="position: relative; width: 100%; right: 0; top: 0; bottom: 0; padding: 0.8em;">
+                            <button type="submit" class="full-width-btn">
                                 Atualizar Período
                             </button>
                         </div>
                     </div>
 
                 {% elif main_tab == 'metas' %}
-                     <div class="form-group search-bar">
-                        <div class="search-container">
-                            <button type="submit" style="position: relative; width: 100%; right: 0; top: 0; bottom: 0; padding: 0.8em;">
-                                Atualizar Período
-                            </button>
-                        </div>
-                    </div>
-                {% endif %}
+                    {% endif %}
             </form>
 
             {% if error_message %}
@@ -408,13 +439,13 @@
                                 </tr>
                                 <tr class="meta-row">
                                     <th colspan="3">METAS</th>
-                                    <td>{{ metas.get('dev_pdv_meta', 'N/A') }}</td>
-                                    <td>R$ {{ "%.2f"|format(metas.get('dev_pdv_premio', 0)) }}</td>
-                                    <td>{{ metas.get('rating_meta', 'N/A') }}</td>
-                                    <td>R$ {{ "%.2f"|format(metas.get('rating_premio', 0)) }}</td>
-                                    <td>{{ metas.get('refugo_meta', 'N/A') }}</td>
-                                    <td>R$ {{ "%.2f"|format(metas.get('refugo_premio', 0)) }}</td>
-                                    <td>R$ {{ "%.2f"|format(metas.get('dev_pdv_premio', 0) + metas.get('rating_premio', 0) + metas.get('refugo_premio', 0)) }}</td>
+                                    <td>{{ metas.motorista.dev_pdv_meta }}</td>
+                                    <td>R$ {{ "%.2f"|format(metas.motorista.dev_pdv_premio) }}</td>
+                                    <td>{{ metas.motorista.rating_meta }}</td>
+                                    <td>R$ {{ "%.2f"|format(metas.motorista.rating_premio) }}</td>
+                                    <td>{{ metas.motorista.refugo_meta }}</td>
+                                    <td>R$ {{ "%.2f"|format(metas.motorista.refugo_premio) }}</td>
+                                    <td>R$ {{ "%.2f"|format(metas.motorista.dev_pdv_premio + metas.motorista.rating_premio + metas.motorista.refugo_premio) }}</td>
                                 </tr>
                             </thead>
                             <tbody>
@@ -449,20 +480,20 @@
                                     <th class="col-cpf">CPF</th>
                                     <th class="col-cod">COD</th>
                                     <th class="col-nome">NOME AJUDANTE</th>
-                                    <th colspan="2">DEVOLUÇÃO (HERDADO)</th>
-                                    <th colspan="2">RATING (HERDADO)</th>
-                                    <th colspan="2">REFUGO (HERDADO)</th>
+                                    <th colspan="2">DEVOLUÇÃO (ou menor)</th>
+                                    <th colspan="2">RATING (ou maior)</th>
+                                    <th colspan="2">REFUGO (ou menor)</th>
                                     <th>TOTAL</th>
                                 </tr>
                                 <tr class="meta-row">
                                     <th colspan="3">METAS</th>
-                                    <td>{{ metas.get('dev_pdv_meta', 'N/A') }}</td>
-                                    <td>R$ {{ "%.2f"|format(metas.get('dev_pdv_premio', 0)) }}</td>
-                                    <td>{{ metas.get('rating_meta', 'N/A') }}</td>
-                                    <td>R$ {{ "%.2f"|format(metas.get('rating_premio', 0)) }}</td>
-                                    <td>{{ metas.get('refugo_meta', 'N/A') }}</td>
-                                    <td>R$ {{ "%.2f"|format(metas.get('refugo_premio', 0)) }}</td>
-                                    <td>R$ {{ "%.2f"|format(metas.get('dev_pdv_premio', 0) + metas.get('rating_premio', 0) + metas.get('refugo_premio', 0)) }}</td>
+                                    <td>{{ metas.ajudante.dev_pdv_meta }}</td>
+                                    <td>R$ {{ "%.2f"|format(metas.ajudante.dev_pdv_premio) }}</td>
+                                    <td>{{ metas.ajudante.rating_meta }}</td>
+                                    <td>R$ {{ "%.2f"|format(metas.ajudante.rating_premio) }}</td>
+                                    <td>{{ metas.ajudante.refugo_meta }}</td>
+                                    <td>R$ {{ "%.2f"|format(metas.ajudante.refugo_premio) }}</td>
+                                    <td>R$ {{ "%.2f"|format(metas.ajudante.dev_pdv_premio + metas.ajudante.rating_premio + metas.ajudante.refugo_premio) }}</td>
                                 </tr>
                             </thead>
                             <tbody>
@@ -491,42 +522,137 @@
                 {% endif %}
 
             {% elif main_tab == 'metas' %}
-                <div class="summary-table">
-                    <h2>Painel de Gestão: Metas de Incentivo</h2>
-                    <p>Valores de referência para o período de {{ data_inicio_selecionada }} até {{ data_fim_selecionada }}.</p>
-                    <div class="table-wrapper">
-                        <table class="incentivo-table">
-                            <thead>
-                                <tr>
-                                    <th>Indicador</th>
-                                    <th>Meta</th>
-                                    <th>Valor do Prémio</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td class="col-nome" style="text-align: left;">DEVOLUÇÃO PDV TT</td>
-                                    <td class="meta-row">{{ metas.get('dev_pdv_meta', 'N/A') }} (ou menor)</td>
-                                    <td class="pass">R$ {{ "%.2f"|format(metas.get('dev_pdv_premio', 0)) }}</td>
-                                </tr>
-                                <tr>
-                                    <td class="col-nome" style="text-align: left;">RATING TX RESPOSTA</td>
-                                    <td class="meta-row">{{ metas.get('rating_meta', 'N/A') }} (ou maior)</td>
-                                    <td class="pass">R$ {{ "%.2f"|format(metas.get('rating_premio', 0)) }}</td>
-                                </tr>
-                                <tr>
-                                    <td class="col-nome" style="text-align: left;">REFUGO</td>
-                                    <td class="meta-row">{{ metas.get('refugo_meta', 'N/A') }} (ou menor)</td>
-                                    <td class="pass">R$ {{ "%.2f"|format(metas.get('refugo_premio', 0)) }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                
+                <form action="/metas" method="post" id="metas-motoristas-form">
+                    <div class="summary-table" style="width: 100%;">
+                        <h2>Metas de Incentivo: Motoristas</h2>
+                        <div class="table-wrapper">
+                            <table class="incentivo-table meta-form-table">
+                                <thead>
+                                    <tr>
+                                        <th>Indicador</th>
+                                        <th>Meta %</th>
+                                        <th>Valor do Prémio (R$)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="col-nome">DEVOLUÇÃO PDV TT</td>
+                                        <td>
+                                            <div class="input-group">
+                                                <input type="number" step="0.01" name="motorista_dev_pdv_meta_perc" value="{{ metas.motorista.dev_pdv_meta_perc }}">
+                                                <span class="input-group-addon">% (ou menor)</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group">
+                                                <span class="input-group-addon">R$</span>
+                                                <input type="number" step="0.01" name="motorista_dev_pdv_premio" value="{{ metas.motorista.dev_pdv_premio }}">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="col-nome">RATING TX RESPOSTA</td>
+                                        <td>
+                                            <div class="input-group">
+                                                <input type="number" step="0.01" name="motorista_rating_meta_perc" value="{{ metas.motorista.rating_meta_perc }}">
+                                                <span class="input-group-addon">% (ou maior)</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group">
+                                                <span class="input-group-addon">R$</span>
+                                                <input type="number" step="0.01" name="motorista_rating_premio" value="{{ metas.motorista.rating_premio }}">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="col-nome">REFUGO</td>
+                                        <td>
+                                            <div class="input-group">
+                                                <input type="number" step="0.01" name="motorista_refugo_meta_perc" value="{{ metas.motorista.refugo_meta_perc }}">
+                                                <span class="input-group-addon">% (ou menor)</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group">
+                                                <span class="input-group-addon">R$</span>
+                                                <input type="number" step="0.01" name="motorista_refugo_premio" value="{{ metas.motorista.refugo_premio }}">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
+                
+                    <div class="summary-table" style="width: 100%;">
+                        <h2>Metas de Incentivo: Ajudantes</h2>
+                        <div class="table-wrapper">
+                            <table class="incentivo-table meta-form-table">
+                                <thead>
+                                    <tr>
+                                        <th>Indicador</th>
+                                        <th>Meta %</th>
+                                        <th>Valor do Prémio (R$)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="col-nome">DEVOLUÇÃO PDV TT</td>
+                                        <td>
+                                            <div class="input-group">
+                                                <input type="number" step="0.01" name="ajudante_dev_pdv_meta_perc" value="{{ metas.ajudante.dev_pdv_meta_perc }}" readonly style="background: #eee;">
+                                                <span class="input-group-addon">% (ou menor)</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group">
+                                                <span class="input-group-addon">R$</span>
+                                                <input type="number" step="0.01" name="ajudante_dev_pdv_premio" value="{{ metas.ajudante.dev_pdv_premio }}">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="col-nome">RATING TX RESPOSTA</td>
+                                        <td>
+                                            <div class="input-group">
+                                                <input type="number" step="0.01" name="ajudante_rating_meta_perc" value="{{ metas.ajudante.rating_meta_perc }}" readonly style="background: #eee;">
+                                                <span class="input-group-addon">% (ou maior)</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group">
+                                                <span class="input-group-addon">R$</span>
+                                                <input type="number" step="0.01" name="ajudante_rating_premio" value="{{ metas.ajudante.rating_premio }}">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="col-nome">REFUGO</td>
+                                        <td>
+                                            <div class="input-group">
+                                                <input type="number" step="0.01" name="ajudante_refugo_meta_perc" value="{{ metas.ajudante.refugo_meta_perc }}" readonly style="background: #eee;">
+                                                <span class="input-group-addon">% (ou menor)</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group">
+                                                <span class="input-group-addon">R$</span>
+                                                <input type="number" step="0.01" name="ajudante_refugo_premio" value="{{ metas.ajudante.refugo_premio }}">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="save-btn">Salvar Alterações</button>
+                </form>
             {% endif %}
 
         </div> </div> <script>
-        // JS para o formulário.
         document.querySelector('form').addEventListener('submit', function() {
             var btn = document.querySelector('button[type="submit"]');
             if (btn) {
