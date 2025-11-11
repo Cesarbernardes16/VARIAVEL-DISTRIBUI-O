@@ -13,6 +13,24 @@ templates = Jinja2Templates(directory="templates")
 def get_supabase(request: Request) -> Client:
     return request.state.supabase
 
+# --- FUNÇÃO DE FALLBACK ---
+def _get_default_metas() -> Dict[str, Any]:
+    """
+    Retorna uma estrutura de metas padrão para evitar crash no template
+    caso o Supabase falhe ou esteja vazio.
+    """
+    default_values = {
+        "dev_pdv_meta_perc": 0.0, "dev_pdv_meta": "N/A", "dev_pdv_premio": 0.0,
+        "rating_meta_perc": 0.0, "rating_meta": "N/A", "rating_premio": 0.0,
+        "refugo_meta_perc": 0.0, "refugo_meta": "N/A", "refugo_premio": 0.0
+    }
+    return {
+        "motorista": default_values.copy(),
+        "ajudante": default_values.copy()
+    }
+# --- FIM DA FUNÇÃO ---
+
+
 # --- ALTERAÇÃO: Metas agora vêm do Supabase ---
 def _get_metas_sincrono(supabase: Client) -> Dict[str, Any]:
     """
@@ -20,12 +38,13 @@ def _get_metas_sincrono(supabase: Client) -> Dict[str, Any]:
     """
     try:
         # 1. Busca os dados
-        response_motorista = supabase.table("Metas", schema="Variavel").select("*").eq("tipo_colaborador", "MOTORISTA").execute()
-        response_ajudante = supabase.table("Metas", schema="Variavel").select("*").eq("tipo_colaborador", "AJUDANTE").execute()
+        # --- ALTERAÇÃO DE SINTAXE (Removido o .schema("Variavel")) ---
+        response_motorista = supabase.table("Metas").select("*").eq("tipo_colaborador", "MOTORISTA").execute()
+        response_ajudante = supabase.table("Metas").select("*").eq("tipo_colaborador", "AJUDANTE").execute()
+        # --- FIM DA ALTERAÇÃO ---
 
         if not response_motorista.data or not response_ajudante.data:
-            # Se não encontrar dados, retorna um padrão seguro
-            raise Exception("Metas não encontradas no Supabase")
+            raise Exception("Metas não encontradas no Supabase (tabela 'Metas' está vazia?)")
 
         m_data = response_motorista.data[0]
         a_data = response_ajudante.data[0]
@@ -63,8 +82,7 @@ def _get_metas_sincrono(supabase: Client) -> Dict[str, Any]:
 
     except Exception as e:
         print(f"Erro ao buscar metas: {e}")
-        # Retorna um dicionário vazio ou padrão em caso de erro
-        return {"motorista": {}, "ajudante": {}}
+        return _get_default_metas()
 
 
 @router.get("/metas", response_class=HTMLResponse)
@@ -73,15 +91,13 @@ async def ler_relatorio_metas(
     supabase: Client = Depends(get_supabase) # Injeta o Supabase
 ):
     
-    # --- ALTERAÇÃO: Busca metas reais no threadpool ---
     metas = await run_in_threadpool(_get_metas_sincrono, supabase)
 
     return templates.TemplateResponse("index.html", {
         "request": request, 
         "main_tab": "metas",
         "metas": metas,
-        # Variáveis vazias para o template não falhar
-        "data_inicio_selecionada": datetime.date.today().isoformat(), # Evita erro no template
+        "data_inicio_selecionada": datetime.date.today().isoformat(),
         "data_fim_selecionada": datetime.date.today().isoformat(),
         "view_mode": "equipas_fixas",
         "incentivo_tab": "motoristas",
@@ -135,25 +151,26 @@ async def salvar_metas(
         }
 
         # 2. Executa o UPDATE no Supabase (em threadpool)
+        # --- ALTERAÇÃO DE SINTAXE (Removido o .schema("Variavel")) ---
         await run_in_threadpool(
-            supabase.table("Metas", schema="Variavel")
+            supabase.table("Metas")
             .update(dados_motorista)
             .eq("tipo_colaborador", "MOTORISTA")
             .execute
         )
         
         await run_in_threadpool(
-            supabase.table("Metas", schema="Variavel")
+            supabase.table("Metas")
             .update(dados_ajudante)
             .eq("tipo_colaborador", "AJUDANTE")
             .execute
         )
+        # --- FIM DA ALTERAÇÃO ---
         
         print("--- METAS SALVAS NO SUPABASE COM SUCESSO ---")
 
     except Exception as e:
         print(f"Erro ao salvar metas: {e}")
-        # (Aqui poderíamos adicionar uma mensagem de erro para o utilizador)
     
     # Redireciona de volta para a página de metas
     return RedirectResponse(url="/metas", status_code=303)
