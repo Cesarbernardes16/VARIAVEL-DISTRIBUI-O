@@ -118,9 +118,14 @@ async def ler_relatorio_incentivo(
     incentivo_motoristas, incentivo_ajudantes = [], []
     metas = _get_metas() # Pega as metas
 
-    # 1. Buscar dados reais (apenas para a lógica dos ajudantes)
-    # Não aplicamos filtro de pesquisa (search_str="") na aba de incentivo
-    df, error_message = await get_dados_apurados(supabase, data_inicio, data_fim, search_str="")
+    # --- ALTERAÇÃO: Chamar get_dados_apurados (síncrono) no threadpool ---
+    df, error_message = await run_in_threadpool(
+        get_dados_apurados,
+        supabase,
+        data_inicio,
+        data_fim,
+        search_str=""
+    )
     
     # 2. Processar incentivos (em thread pool)
     # Passamos o 'df' (mesmo que seja None)

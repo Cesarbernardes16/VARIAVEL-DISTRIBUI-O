@@ -7,7 +7,8 @@ from .analysis import limpar_texto # Importa da mesma pasta 'core'
 NOME_DA_TABELA = "Distribuição"
 NOME_COLUNA_DATA = "DATA"
 
-async def get_dados_apurados(
+# --- ALTERAÇÃO: Removido o "async" ---
+def get_dados_apurados(
     supabase: Client, 
     data_inicio_str: str, 
     data_fim_str: str, 
@@ -25,7 +26,6 @@ async def get_dados_apurados(
         page_size = 1000
         page = 0
         while True:
-            # A query agora é assíncrona
             query = (
                 supabase.table(NOME_DA_TABELA)
                 .select("*")
@@ -33,7 +33,8 @@ async def get_dados_apurados(
                 .lte(NOME_COLUNA_DATA, data_fim_str)
                 .range(page * page_size, (page + 1) * page_size - 1)
             )
-            response = await query.execute() # Usa await
+            # --- ALTERAÇÃO: Removido o "await" ---
+            response = query.execute() 
             
             if not response.data: break
             dados_completos.extend(response.data)
@@ -47,7 +48,7 @@ async def get_dados_apurados(
 
     except Exception as e:
         print(f"Erro ao buscar dados do Supabase: {e}")
-        return None, "Erro ao conectar ao banco de dados."
+        return None, "Erro ao conectar ao banco de dados." # Este é o erro que você viu
 
     # Limpeza de Texto
     for col in df.select_dtypes(include=['object']):

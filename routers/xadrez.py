@@ -49,11 +49,17 @@ async def ler_relatorio_xadrez(
     
     resumo_viagens, dashboard_equipas = [], None
 
-    # 1. Buscar dados (agora é async)
-    df, error_message = await get_dados_apurados(supabase, data_inicio, data_fim, search_str)
+    # --- ALTERAÇÃO: Chamar get_dados_apurados (síncrono) no threadpool ---
+    df, error_message = await run_in_threadpool(
+        get_dados_apurados, 
+        supabase, 
+        data_inicio, 
+        data_fim, 
+        search_str
+    )
     
     # 2. Processar dados (em thread pool)
-    if error_message is None:
+    if error_message is None and df is not None:
         resumo_viagens, dashboard_equipas = await run_in_threadpool(
             processar_xadrez_sincrono,
             df,
