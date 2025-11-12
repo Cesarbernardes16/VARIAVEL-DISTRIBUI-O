@@ -185,18 +185,26 @@ async def ler_relatorio_incentivo(
 
     # --- INÍCIO DA NOVA LÓGICA DE PERÍODO ---
     try:
+        # Usa a data de INÍCIO do filtro para descobrir o período
         user_date_obj = datetime.date.fromisoformat(data_inicio_filtro)
         dia_corte = 26
         
         if user_date_obj.day < dia_corte:
+            # A data pertence ao período que termina este mês
+            # Ex: user_date = 7 Nov -> período termina a 25 Nov
             data_fim_periodo = user_date_obj.replace(day=25)
+            # O início foi no dia 26 do mês anterior
             data_inicio_periodo = (user_date_obj.replace(day=1) - datetime.timedelta(days=1)).replace(day=dia_corte)
         else:
+            # A data pertence ao período que começa este mês
+            # Ex: user_date = 27 Out -> período começa a 26 Out
             data_inicio_periodo = user_date_obj.replace(day=dia_corte)
+            # O fim é no dia 25 do próximo mês
             data_fim_periodo = (data_inicio_periodo + datetime.timedelta(days=32)).replace(day=25)
 
         data_inicio_periodo_str = data_inicio_periodo.isoformat()
         data_fim_periodo_str = data_fim_periodo.isoformat()
+    
     except ValueError:
         # Lida com datas inválidas
         error_message = "Formato de data inválido."
@@ -219,7 +227,7 @@ async def ler_relatorio_incentivo(
     if error_cadastro and not error_message:
         error_message = error_cadastro
     
-    # --- ALTERAÇÃO: 3. Buscar dados de INDICADORES (Usa as datas do PERÍODO CALCULADO) ---
+    # 3. Buscar dados de INDICADORES (Usa as datas do PERÍODO CALCULADO)
     df_indicadores, error_indicadores = await run_in_threadpool(
         get_indicadores_sincrono,
         supabase,
@@ -228,7 +236,6 @@ async def ler_relatorio_incentivo(
     )
     if error_indicadores and not error_message:
         error_message = error_indicadores
-    # --- FIM DA ALTERAÇÃO ---
     
     # Remove duplicatas do DataFrame de viagens
     if error_message is None and df_viagens is not None:
@@ -247,13 +254,15 @@ async def ler_relatorio_incentivo(
             metas
         )
     else:
+        # Tenta processar mesmo com erro (pode mostrar listas vazias)
         incentivo_motoristas, incentivo_ajudantes = await run_in_threadpool(
             processar_incentivos_sincrono,
-            None, # Passa None se houver erro, para evitar crash
+            df_viagens,
             df_cadastro,
             df_indicadores,
             metas
         )
+
 
     return templates.TemplateResponse("index.html", {
         "request": request, 
