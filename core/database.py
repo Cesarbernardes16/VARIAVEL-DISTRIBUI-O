@@ -7,7 +7,7 @@ from .analysis import limpar_texto # Importa da mesma pasta 'core'
 NOME_DA_TABELA = "Distribuição"
 NOME_COLUNA_DATA = "DATA"
 
-# --- ALTERAÇÃO: Removido o "async" ---
+# --- FUNÇÃO 1 (Existente e Corrigida) ---
 def get_dados_apurados(
     supabase: Client, 
     data_inicio_str: str, 
@@ -15,7 +15,7 @@ def get_dados_apurados(
     search_str: str
 ) -> Tuple[Optional[pd.DataFrame], Optional[str]]:
     """
-    Busca dados do Supabase, limpa e filtra.
+    Busca dados do Supabase (Distribuição), limpa e filtra.
     Retorna o DataFrame ou (None, error_message).
     """
     df = pd.DataFrame()
@@ -26,6 +26,7 @@ def get_dados_apurados(
         page_size = 1000
         page = 0
         while True:
+            # Assumindo que a tabela 'Distribuição' está no schema 'public'
             query = (
                 supabase.table(NOME_DA_TABELA)
                 .select("*")
@@ -33,7 +34,6 @@ def get_dados_apurados(
                 .lte(NOME_COLUNA_DATA, data_fim_str)
                 .range(page * page_size, (page + 1) * page_size - 1)
             )
-            # --- ALTERAÇÃO: Removido o "await" ---
             response = query.execute() 
             
             if not response.data: break
@@ -47,8 +47,10 @@ def get_dados_apurados(
         df = pd.DataFrame(dados_completos)
 
     except Exception as e:
-        print(f"Erro ao buscar dados do Supabase: {e}")
-        return None, "Erro ao conectar ao banco de dados." # Este é o erro que você viu
+        print(f"Erro ao buscar dados do Supabase (Distribuição): {e}")
+        if "permission denied" in str(e):
+             return None, "Erro de permissão. Execute 'GRANT ALL ON TABLE public.\"Distribuição\" TO service_role;' no Supabase."
+        return None, "Erro ao conectar à tabela 'Distribuição'."
 
     # Limpeza de Texto
     for col in df.select_dtypes(include=['object']):
@@ -74,3 +76,34 @@ def get_dados_apurados(
             return None, f"Nenhum dado encontrado para o termo de busca: '{search_str}'"
 
     return df, None
+
+# --- FUNÇÃO 2 (CORRIGIDA) ---
+def get_cadastro_sincrono(supabase: Client) -> Tuple[Optional[pd.DataFrame], Optional[str]]:
+    """
+    Busca todos os dados da tabela de cadastro (public.Cadastro).
+    """
+    try:
+        # --- ALTERAÇÃO AQUI: Remove o .schema("Variavel") ---
+        response = supabase.table("Cadastro").select("*").execute()
+        
+        if not response.data:
+            return None, "Tabela 'Cadastro' está vazia ou não foi encontrada no schema 'public'."
+        
+        df_cadastro = pd.DataFrame(response.data)
+        
+        df_cadastro.columns = df_cadastro.columns.str.strip()
+
+        if 'CPF_M' in df_cadastro.columns:
+            df_cadastro['CPF_M'] = df_cadastro['CPF_M'].astype(str).str.replace(r'[.-]', '', regex=True).fillna('')
+        if 'CPF_J' in df_cadastro.columns:
+            df_cadastro['CPF_J'] = df_cadastro['CPF_J'].astype(str).str.replace(r'[.-]', '', regex=True).fillna('')
+
+        return df_cadastro, None
+
+    except Exception as e:
+        print(f"Erro ao buscar dados do Cadastro: {e}")
+        if "permission denied" in str(e):
+            return None, "Erro de permissão. Execute 'GRANT ALL ON TABLE public.\"Cadastro\" TO service_role;' no Supabase."
+        if "relation" in str(e) and "does not exist" in str(e):
+             return None, "Erro: A tabela 'Cadastro' não existe no schema 'public'."
+        return None, "Erro ao conectar à tabela de Cadastro."

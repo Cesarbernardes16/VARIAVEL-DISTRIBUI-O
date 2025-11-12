@@ -7,39 +7,28 @@ from fastapi.concurrency import run_in_threadpool
 from supabase import Client
 
 # Importa a nossa lógica partilhada
-from core.database import get_dados_apurados
+from core.database import get_dados_apurados, get_cadastro_sincrono
 from core.analysis import gerar_dashboard_e_mapas
-# --- ALTERAÇÃO AQUI ---
-# Importa a função com o nome correto
 from .metas import _get_metas_sincrono
-# --- FIM DA ALTERAÇÃO ---
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
-# Função para obter o cliente Supabase do estado da request
 def get_supabase(request: Request) -> Client:
     return request.state.supabase
 
 # Função de processamento síncrono (para o thread pool)
-def processar_incentivos_sincrono(df: Optional[pd.DataFrame], metas: Dict[str, Any]):
+def processar_incentivos_sincrono(
+    df_viagens: Optional[pd.DataFrame], 
+    df_cadastro: Optional[pd.DataFrame], 
+    metas: Dict[str, Any]
+):
     
     incentivo_motoristas = []
     incentivo_ajudantes = []
     
-    # Pega as metas específicas
     metas_motorista = metas.get("motorista", {})
     metas_ajudante = metas.get("ajudante", {})
-    
-    # --- ETAPA 1: Gerar dados FALSOS (MOCK) para Motoristas ---
-    dados_motoristas = [
-        {"cpf": "Não Aparece", "cod": 9999, "nome": "ADEMILSON PANTALEAO (AFASTADO)"},
-        {"cpf": "21676141871", "cod": 248, "nome": "ADOLFO RAMOS DA SILVA", "dev_pdv": 4.90, "rating": 20.98, "refugo": None},
-        {"cpf": "92186866153", "cod": 7, "nome": "ALAN CORREIA DOS SANTOS CARDEN", "dev_pdv": 8.00, "rating": 15.20, "refugo": None},
-        {"cpf": "93303068100", "cod": 10, "nome": "ALEXANDER DOS SANTOS COSTA", "dev_pdv": 1.18, "rating": 37.11, "refugo": 0.5},
-        {"cpf": "7600204185", "cod": 192, "nome": "ALEXANDRE AQUINO CACERES", "dev_pdv": 1.21, "rating": 58.18, "refugo": None},
-        {"cpf": "5224088186", "cod": 665, "nome": "ALEXANDRE DOS SANTOS COSTA", "dev_pdv": 0.98, "rating": 25.24, "refugo": None},
-    ]
     
     premio_motorista_map = {}
     default_premio_info = {
@@ -48,47 +37,79 @@ def processar_incentivos_sincrono(df: Optional[pd.DataFrame], metas: Dict[str, A
         "refugo_val": "N/A", "refugo_passou": False,
     }
 
-    for motorista in dados_motoristas:
-        linha = motorista.copy()
-        
-        # Lógica de Devolução (Motorista)
-        dev_atingido = linha.get("dev_pdv")
-        dev_passou = (dev_atingido is not None and dev_atingido <= metas_motorista.get("dev_pdv_meta_perc", 0))
-        linha["dev_pdv_val"] = f"{dev_atingido:.2f}%" if dev_atingido is not None else "N/A"
-        linha["dev_pdv_premio_val"] = metas_motorista.get("dev_pdv_premio", 0) if dev_passou else 0.0
-        
-        # Lógica de Rating (Motorista)
-        rating_atingido = linha.get("rating")
-        rating_passou = (rating_atingido is not None and rating_atingido >= metas_motorista.get("rating_meta_perc", 0))
-        linha["rating_val"] = f"{rating_atingido:.2f}%" if rating_atingido is not None else "N/A"
-        linha["rating_premio_val"] = metas_motorista.get("rating_premio", 0) if rating_passou else 0.0
+    # --- ETAPA 1: Criar mapas de CPF a partir do Cadastro ---
+    cpf_motorista_map = {}
+    cpf_ajudante_map = {}
 
-        # Lógica de Refugo (Motorista)
-        refugo_atingido = linha.get("refugo")
-        refugo_passou = (refugo_atingido is not None and refugo_atingido <= metas_motorista.get("refugo_meta_perc", 0))
-        linha["refugo_val"] = f"{refugo_atingido:.2f}%" if refugo_atingido is not None else "N/A"
-        linha["refugo_premio_val"] = metas_motorista.get("refugo_premio", 0) if refugo_passou else 0.0
+    if df_cadastro is not None and not df_cadastro.empty:
+        # Mapa de Motoristas (Codigo_M -> CPF_M)
+        df_motoristas_cadastro = df_cadastro[pd.notna(df_cadastro['Codigo_M'])].drop_duplicates(subset=['Codigo_M'])
+        df_motoristas_cadastro['Codigo_M_int'] = pd.to_numeric(df_motoristas_cadastro['Codigo_M'], errors='coerce')
+        df_motoristas_cadastro = df_motoristas_cadastro.dropna(subset=['Codigo_M_int'])
+        df_motoristas_cadastro['Codigo_M_int'] = df_motoristas_cadastro['Codigo_M_int'].astype(int)
+        cpf_motorista_map = df_motoristas_cadastro.set_index('Codigo_M_int')['CPF_M'].to_dict()
 
-        linha["total_premio"] = linha["dev_pdv_premio_val"] + linha["rating_premio_val"] + linha["refugo_premio_val"]
-        incentivo_motoristas.append(linha)
+        # Mapa de Ajudantes (Codigo_J -> CPF_J)
+        df_ajudantes_cadastro = df_cadastro[pd.notna(df_cadastro['Codigo_J'])].drop_duplicates(subset=['Codigo_J'])
+        df_ajudantes_cadastro['Codigo_J_int'] = pd.to_numeric(df_ajudantes_cadastro['Codigo_J'], errors='coerce')
+        df_ajudantes_cadastro = df_ajudantes_cadastro.dropna(subset=['Codigo_J_int'])
+        df_ajudantes_cadastro['Codigo_J_int'] = df_ajudantes_cadastro['Codigo_J_int'].astype(int)
+        cpf_ajudante_map = df_ajudantes_cadastro.set_index('Codigo_J_int')['CPF_J'].to_dict()
+
+    
+    # --- ETAPA 2: Processar Motoristas e Ajudantes REAIS (do df_viagens) ---
+    
+    if df_viagens is not None and not df_viagens.empty:
         
-        # Salva o RESULTADO (pass/fail) e os VALORES ATINGIDOS no mapa
-        if linha["cod"]:
-            premio_motorista_map[linha["cod"]] = {
-                "dev_pdv_val": linha["dev_pdv_val"], "dev_pdv_passou": dev_passou,
-                "rating_val": linha["rating_val"], "rating_passou": rating_passou,
-                "refugo_val": linha["refugo_val"], "refugo_passou": refugo_passou,
-            }
+        # --- LÓGICA DOS MOTORISTAS ---
+        # 1. Encontra todos os motoristas únicos que trabalharam no período
+        motoristas_no_periodo = df_viagens[['COD', 'MOTORISTA']].drop_duplicates(subset=['COD'])
 
-    # --- ETAPA 2: Ligar Ajudantes (só se tivermos dados reais) ---
-    if df is not None and not df.empty:
-        # O 'df' que recebemos aqui já foi limpo (sem duplicatas)
-        resultado_xadrez = gerar_dashboard_e_mapas(df)
+        for _, motorista in motoristas_no_periodo.iterrows():
+            linha = {}
+            cod_motorista_int = int(motorista['COD'])
+            
+            # Pega dados reais das viagens
+            linha["cpf"] = cpf_motorista_map.get(cod_motorista_int, "") # Busca CPF no mapa
+            linha["cod"] = cod_motorista_int
+            linha["nome"] = str(motorista.get('MOTORISTA', 'N/A')).strip()
+
+            # --- DADOS DE PERFORMANCE FALSOS (0%) CONFORME PEDIDO ---
+            dev_atingido = None # Será N/A
+            rating_atingido = None # Será N/A
+            refugo_atingido = None # Será N/A
+            # --- FIM DOS DADOS FALSOS ---
+
+            # O resto da lógica de cálculo de prémios continua
+            dev_passou = (dev_atingido is not None and dev_atingido <= metas_motorista.get("dev_pdv_meta_perc", 0))
+            linha["dev_pdv_val"] = f"{dev_atingido:.2f}%" if dev_atingido is not None else "N/A"
+            linha["dev_pdv_premio_val"] = metas_motorista.get("dev_pdv_premio", 0) if dev_passou else 0.0
+            
+            rating_passou = (rating_atingido is not None and rating_atingido >= metas_motorista.get("rating_meta_perc", 0))
+            linha["rating_val"] = f"{rating_atingido:.2f}%" if rating_atingido is not None else "N/A"
+            linha["rating_premio_val"] = metas_motorista.get("rating_premio", 0) if rating_passou else 0.0
+
+            refugo_passou = (refugo_atingido is not None and refugo_atingido <= metas_motorista.get("refugo_meta_perc", 0))
+            linha["refugo_val"] = f"{refugo_atingido:.2f}%" if refugo_atingido is not None else "N/A"
+            linha["refugo_premio_val"] = metas_motorista.get("refugo_premio", 0) if refugo_passou else 0.0
+
+            linha["total_premio"] = linha["dev_pdv_premio_val"] + linha["rating_premio_val"] + linha["refugo_premio_val"]
+            incentivo_motoristas.append(linha)
+            
+            # Salva o RESULTADO (pass/fail) e os VALORES ATINGIDOS no mapa
+            if linha["cod"]:
+                premio_motorista_map[linha["cod"]] = {
+                    "dev_pdv_val": linha["dev_pdv_val"], "dev_pdv_passou": dev_passou,
+                    "rating_val": linha["rating_val"], "rating_passou": rating_passou,
+                    "refugo_val": linha["refugo_val"], "refugo_passou": refugo_passou,
+                }
+
+        # --- LÓGICA DOS AJUDANTES (Quase inalterada) ---
+        resultado_xadrez = gerar_dashboard_e_mapas(df_viagens)
         mapas = resultado_xadrez["mapas"]
         df_melted = resultado_xadrez["df_melted"]
         
         motorista_fixo_map = mapas.get("motorista_fixo_map", {})
-        
         ajudantes_unicos = df_melted.drop_duplicates(subset=['AJUDANTE_COD'])
         
         for _, ajudante in ajudantes_unicos.iterrows():
@@ -96,38 +117,31 @@ def processar_incentivos_sincrono(df: Optional[pd.DataFrame], metas: Dict[str, A
             nome_ajudante = ajudante['AJUDANTE_NOME']
             cod_motorista_fixo = motorista_fixo_map.get(cod_ajudante)
             
-            # Pega o resultado (pass/fail) do motorista fixo
             performance_herdada = default_premio_info.copy()
             if cod_motorista_fixo:
                 performance_herdada = premio_motorista_map.get(cod_motorista_fixo, default_premio_info)
-            
-            # --- ALTERAÇÃO: Calcula o prémio do Ajudante ---
-            # O ajudante herda o "pass/fail", mas o prémio é da tabela de ajudantes
             
             premio_dev_ajudante = metas_ajudante.get("dev_pdv_premio", 0) if performance_herdada["dev_pdv_passou"] else 0.0
             premio_rating_ajudante = metas_ajudante.get("rating_premio", 0) if performance_herdada["rating_passou"] else 0.0
             premio_refugo_ajudante = metas_ajudante.get("refugo_premio", 0) if performance_herdada["refugo_passou"] else 0.0
             
             ajudante_data = {
-                "cpf": "", # CPF em branco
+                "cpf": cpf_ajudante_map.get(cod_ajudante, ""), # <-- CPF REAL DO AJUDANTE
                 "cod": cod_ajudante,
                 "nome": nome_ajudante,
-                
                 "dev_pdv_val": performance_herdada["dev_pdv_val"],
                 "dev_pdv_premio_val": premio_dev_ajudante,
-                
                 "rating_val": performance_herdada["rating_val"],
                 "rating_premio_val": premio_rating_ajudante,
-                
                 "refugo_val": performance_herdada["refugo_val"],
                 "refugo_premio_val": premio_refugo_ajudante,
-                
                 "total_premio": premio_dev_ajudante + premio_rating_ajudante + premio_refugo_ajudante
             }
-            
             incentivo_ajudantes.append(ajudante_data)
             
         incentivo_ajudantes = sorted(incentivo_ajudantes, key=lambda x: x['nome'])
+    
+    incentivo_motoristas = sorted(incentivo_motoristas, key=lambda x: x['nome'])
         
     return incentivo_motoristas, incentivo_ajudantes
 
@@ -145,13 +159,10 @@ async def ler_relatorio_incentivo(
     data_fim = data_fim or hoje.isoformat()
     
     incentivo_motoristas, incentivo_ajudantes = [], []
-    
-    # --- ALTERAÇÃO AQUI ---
-    # Busca as metas usando a função correta no threadpool
     metas = await run_in_threadpool(_get_metas_sincrono, supabase)
-    # --- FIM DA ALTERAÇÃO ---
 
-    df, error_message = await run_in_threadpool(
+    # 1. Buscar dados de VIAGENS (para a lógica de motoristas E ajudantes)
+    df_viagens, error_message = await run_in_threadpool(
         get_dados_apurados,
         supabase,
         data_inicio,
@@ -159,19 +170,32 @@ async def ler_relatorio_incentivo(
         search_str=""
     )
     
-    # Remove duplicatas do DataFrame principal
-    if error_message is None and df is not None:
-        if 'MAPA' in df.columns:
-            df = df.drop_duplicates(subset=['MAPA'])
-        else:
-            df = df.drop_duplicates()
+    # 2. Buscar dados de CADASTRO (para o lookup de CPF)
+    df_cadastro, error_cadastro = await run_in_threadpool(get_cadastro_sincrono, supabase)
     
-    # 2. Processar incentivos (em thread pool)
-    incentivo_motoristas, incentivo_ajudantes = await run_in_threadpool(
-        processar_incentivos_sincrono,
-        df,
-        metas # Passa o dicionário de metas aninhado
-    )
+    if error_cadastro and not error_message:
+        error_message = error_cadastro
+    
+    # Remove duplicatas do DataFrame de viagens
+    if error_message is None and df_viagens is not None:
+        if 'MAPA' in df_viagens.columns:
+            df_viagens = df_viagens.drop_duplicates(subset=['MAPA'])
+        else:
+            df_viagens = df_viagens.drop_duplicates()
+    
+    # 3. Processar incentivos
+    # (Mesmo que df_viagens seja None por não ter viagens, 
+    # queremos processar df_cadastro para mostrar a lista de motoristas...
+    # ... Não, espera, a regra mudou!)
+    
+    # Nova Lógica: Se não houver viagens, as listas ficam vazias.
+    if error_message is None:
+        incentivo_motoristas, incentivo_ajudantes = await run_in_threadpool(
+            processar_incentivos_sincrono,
+            df_viagens, # Pode ser None
+            df_cadastro, # Pode ser None
+            metas
+        )
 
     return templates.TemplateResponse("index.html", {
         "request": request, 
@@ -182,7 +206,7 @@ async def ler_relatorio_incentivo(
         "error_message": error_message,
         "incentivo_motoristas": incentivo_motoristas,
         "incentivo_ajudantes": incentivo_ajudantes,
-        "metas": metas, # Passa as metas aninhadas
+        "metas": metas,
         "view_mode": "equipas_fixas", 
         "search_query": "",
         "resumo_viagens": [],

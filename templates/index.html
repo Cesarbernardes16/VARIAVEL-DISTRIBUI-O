@@ -224,9 +224,9 @@
                    class="{% if main_tab == 'xadrez' %}active{% endif %}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                         <path d="M1.5 0A1.5 1.5 0 0 0 0 1.5v13A1.5 1.5 0 0 0 1.5 16h13a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 14.5 0h-13zM2 1h12v1H2V1zm0 2h12v11H2V3z"/>
-                        <path d="M5 4.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-4zM10 3.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zM3 3.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zM3 11.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm8 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1z"/>
+                        <path d="M5 4.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-4zM10 3.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zM3 3.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zM3 11.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm8 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.AF5.5 0 0 1-.5-.5v-1z"/>
                     </svg>
-                    Visão do Xadrez
+                    Visão Geral (Xadrez)
                 </a>
             </li>
             <li>
@@ -244,7 +244,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                          <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311a1.464 1.464 0 0 1-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.858 2.929 2.929 0 0 1 0 5.858z"/>
                     </svg>
-                    Painel de Metas
+                    Painel de Gestão (Metas)
                 </a>
             </li>
         </ul>
@@ -480,9 +480,9 @@
                                     <th class="col-cpf">CPF</th>
                                     <th class="col-cod">COD</th>
                                     <th class="col-nome">NOME AJUDANTE</th>
-                                    <th colspan="2">DEVOLUÇÃO (ou menor)</th>
-                                    <th colspan="2">RATING (ou maior)</th>
-                                    <th colspan="2">REFUGO (ou menor)</th>
+                                    <th colspan="2">DEVOLUÇÃO (HERDADO)</th>
+                                    <th colspan="2">RATING (HERDADO)</th>
+                                    <th colspan="2">REFUGO (HERDADO)</th>
                                     <th>TOTAL</th>
                                 </tr>
                                 <tr class="meta-row">
@@ -523,7 +523,7 @@
 
             {% elif main_tab == 'metas' %}
                 
-                <form action="/metas" method="post" id="metas-motoristas-form">
+                <form action="/metas" method="post" id="metas-form">
                     <div class="summary-table" style="width: 100%;">
                         <h2>Metas de Incentivo: Motoristas</h2>
                         <div class="table-wrapper">
@@ -602,7 +602,7 @@
                                         <td class="col-nome">DEVOLUÇÃO PDV TT</td>
                                         <td>
                                             <div class="input-group">
-                                                <input type="number" step="0.01" name="ajudante_dev_pdv_meta_perc" value="{{ metas.ajudante.dev_pdv_meta_perc }}" readonly style="background: #eee;">
+                                                <input type="number" step="0.01" name="ajudante_dev_pdv_meta_perc" value="{{ metas.ajudante.dev_pdv_meta_perc }}">
                                                 <span class="input-group-addon">% (ou menor)</span>
                                             </div>
                                         </td>
@@ -617,7 +617,7 @@
                                         <td class="col-nome">RATING TX RESPOSTA</td>
                                         <td>
                                             <div class="input-group">
-                                                <input type="number" step="0.01" name="ajudante_rating_meta_perc" value="{{ metas.ajudante.rating_meta_perc }}" readonly style="background: #eee;">
+                                                <input type="number" step="0.01" name="ajudante_rating_meta_perc" value="{{ metas.ajudante.rating_meta_perc }}">
                                                 <span class="input-group-addon">% (ou maior)</span>
                                             </div>
                                         </td>
@@ -632,7 +632,7 @@
                                         <td class="col-nome">REFUGO</td>
                                         <td>
                                             <div class="input-group">
-                                                <input type="number" step="0.01" name="ajudante_refugo_meta_perc" value="{{ metas.ajudante.refugo_meta_perc }}" readonly style="background: #eee;">
+                                                <input type="number" step="0.01" name="ajudante_refugo_meta_perc" value="{{ metas.ajudante.refugo_meta_perc }}">
                                                 <span class="input-group-addon">% (ou menor)</span>
                                             </div>
                                         </td>
