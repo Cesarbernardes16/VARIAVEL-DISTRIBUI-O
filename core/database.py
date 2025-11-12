@@ -118,7 +118,7 @@ def get_indicadores_sincrono(
     """
     try:
         # Busca os indicadores onde o período de pagamento corresponde
-        # exatamente ao selecionado pelo utilizador.
+        # exatamente ao período calculado.
         response = (
             supabase.table("Resultados_Indicadores")
             .select("*")

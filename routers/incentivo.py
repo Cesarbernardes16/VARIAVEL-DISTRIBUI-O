@@ -6,7 +6,6 @@ from typing import Optional, Dict, Any
 from fastapi.concurrency import run_in_threadpool
 from supabase import Client
 
-# Importa a nossa lógica partilhada
 # --- ALTERAÇÃO: Importa a nova função ---
 from core.database import get_dados_apurados, get_cadastro_sincrono, get_indicadores_sincrono
 from core.analysis import gerar_dashboard_e_mapas
@@ -59,14 +58,16 @@ def processar_incentivos_sincrono(
         df_ajudantes_cadastro['Codigo_J_int'] = df_ajudantes_cadastro['Codigo_J_int'].astype(int)
         cpf_ajudante_map = df_ajudantes_cadastro.set_index('Codigo_J_int')['CPF_J'].to_dict()
 
+    # --- ALTERAÇÃO: Ler dados reais dos indicadores ---
     if df_indicadores is not None and not df_indicadores.empty:
         # Mapa de Indicadores (Codigo_M -> Fila com resultados)
-        # Converte para numérico (os dados já devem vir como ponto decimal, ex: 0.0414)
         df_indicadores['dev_pdv'] = pd.to_numeric(df_indicadores['dev_pdv'], errors='coerce')
         df_indicadores['Rating_tx'] = pd.to_numeric(df_indicadores['Rating_tx'], errors='coerce')
         df_indicadores['refugo'] = pd.to_numeric(df_indicadores['refugo'], errors='coerce')
         
+        # Usa Codigo_M como chave
         indicadores_map = df_indicadores.set_index('Codigo_M').to_dict('index')
+    # --- FIM DA ALTERAÇÃO ---
 
     
     # --- ETAPA 2: Processar Motoristas e Ajudantes REAIS (do df_viagens) ---
@@ -84,7 +85,7 @@ def processar_incentivos_sincrono(
             linha["cod"] = cod_motorista_int
             linha["nome"] = str(motorista.get('MOTORISTA', 'N/A')).strip()
 
-            # --- DADOS DE PERFORMANCE REAIS ---
+            # --- ALTERAÇÃO: DADOS DE PERFORMANCE REAIS ---
             indicadores_reais = indicadores_map.get(cod_motorista_int, {})
             
             # Converte de 0.0414 para 4.14 (multiplica por 100)
@@ -99,7 +100,7 @@ def processar_incentivos_sincrono(
             refugo_atingido = indicadores_reais.get('refugo')
             if pd.notna(refugo_atingido):
                 refugo_atingido = refugo_atingido * 100
-            # --- FIM DOS DADOS REAIS ---
+            # --- FIM DA ALTERAÇÃO ---
 
             # O resto da lógica de cálculo de prémios continua
             dev_passou = (dev_atingido is not None and dev_atingido <= metas_motorista.get("dev_pdv_meta_perc", 0))
@@ -125,7 +126,7 @@ def processar_incentivos_sincrono(
                     "refugo_val": linha["refugo_val"], "refugo_passou": refugo_passou,
                 }
 
-        # --- LÓGICA DOS AJUDANTES ---
+        # --- LÓGICA DOS AJUDANTES (Inalterada) ---
         resultado_xadrez = gerar_dashboard_e_mapas(df_viagens)
         mapas = resultado_xadrez["mapas"]
         df_melted = resultado_xadrez["df_melted"]
@@ -176,41 +177,32 @@ async def ler_relatorio_incentivo(
 ):
     
     hoje = datetime.date.today()
-    # As datas do filtro do utilizador (ex: 01/11 a 11/11)
     data_inicio_filtro = data_inicio or hoje.replace(day=1).isoformat()
     data_fim_filtro = data_fim or hoje.isoformat()
     
     incentivo_motoristas, incentivo_ajudantes = [], []
     metas = await run_in_threadpool(_get_metas_sincrono, supabase)
 
-    # --- INÍCIO DA NOVA LÓGICA DE PERÍODO ---
+    # --- LÓGICA DE PERÍODO (Inalterada) ---
     try:
-        # Usa a data de INÍCIO do filtro para descobrir o período
         user_date_obj = datetime.date.fromisoformat(data_inicio_filtro)
         dia_corte = 26
         
         if user_date_obj.day < dia_corte:
-            # A data pertence ao período que termina este mês
-            # Ex: user_date = 7 Nov -> período termina a 25 Nov
             data_fim_periodo = user_date_obj.replace(day=25)
-            # O início foi no dia 26 do mês anterior
             data_inicio_periodo = (user_date_obj.replace(day=1) - datetime.timedelta(days=1)).replace(day=dia_corte)
         else:
-            # A data pertence ao período que começa este mês
-            # Ex: user_date = 27 Out -> período começa a 26 Out
             data_inicio_periodo = user_date_obj.replace(day=dia_corte)
-            # O fim é no dia 25 do próximo mês
             data_fim_periodo = (data_inicio_periodo + datetime.timedelta(days=32)).replace(day=25)
 
         data_inicio_periodo_str = data_inicio_periodo.isoformat()
         data_fim_periodo_str = data_fim_periodo.isoformat()
     
     except ValueError:
-        # Lida com datas inválidas
         error_message = "Formato de data inválido."
         data_inicio_periodo_str = data_inicio_filtro
         data_fim_periodo_str = data_fim_filtro
-    # --- FIM DA NOVA LÓGICA DE PERÍODO ---
+    # --- FIM DA LÓGICA DE PERÍODO ---
 
 
     # 1. Buscar dados de VIAGENS (usa o filtro do utilizador)
@@ -227,7 +219,7 @@ async def ler_relatorio_incentivo(
     if error_cadastro and not error_message:
         error_message = error_cadastro
     
-    # 3. Buscar dados de INDICADORES (Usa as datas do PERÍODO CALCULADO)
+    # --- ALTERAÇÃO: 3. Buscar dados de INDICADORES ---
     df_indicadores, error_indicadores = await run_in_threadpool(
         get_indicadores_sincrono,
         supabase,
@@ -236,8 +228,8 @@ async def ler_relatorio_incentivo(
     )
     if error_indicadores and not error_message:
         error_message = error_indicadores
+    # --- FIM DA ALTERAÇÃO ---
     
-    # Remove duplicatas do DataFrame de viagens
     if error_message is None and df_viagens is not None:
         if 'MAPA' in df_viagens.columns:
             df_viagens = df_viagens.drop_duplicates(subset=['MAPA'])
@@ -254,7 +246,6 @@ async def ler_relatorio_incentivo(
             metas
         )
     else:
-        # Tenta processar mesmo com erro (pode mostrar listas vazias)
         incentivo_motoristas, incentivo_ajudantes = await run_in_threadpool(
             processar_incentivos_sincrono,
             df_viagens,
@@ -263,13 +254,12 @@ async def ler_relatorio_incentivo(
             metas
         )
 
-
     return templates.TemplateResponse("index.html", {
         "request": request, 
         "main_tab": "incentivo",
         "incentivo_tab": incentivo_tab,
-        "data_inicio_selecionada": data_inicio_filtro, # Mostra o filtro do utilizador
-        "data_fim_selecionada": data_fim_filtro,       # Mostra o filtro do utilizador
+        "data_inicio_selecionada": data_inicio_filtro,
+        "data_fim_selecionada": data_fim_filtro,
         "error_message": error_message,
         "incentivo_motoristas": incentivo_motoristas,
         "incentivo_ajudantes": incentivo_ajudantes,
