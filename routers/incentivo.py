@@ -7,6 +7,7 @@ from fastapi.concurrency import run_in_threadpool
 from supabase import Client
 
 # Importa a nossa lógica partilhada
+# --- ALTERAÇÃO: Importa a nova função ---
 from core.database import get_dados_apurados, get_cadastro_sincrono, get_indicadores_sincrono
 from core.analysis import gerar_dashboard_e_mapas
 from .metas import _get_metas_sincrono
@@ -60,6 +61,7 @@ def processar_incentivos_sincrono(
 
     if df_indicadores is not None and not df_indicadores.empty:
         # Mapa de Indicadores (Codigo_M -> Fila com resultados)
+        # Converte para numérico (os dados já devem vir como ponto decimal, ex: 0.0414)
         df_indicadores['dev_pdv'] = pd.to_numeric(df_indicadores['dev_pdv'], errors='coerce')
         df_indicadores['Rating_tx'] = pd.to_numeric(df_indicadores['Rating_tx'], errors='coerce')
         df_indicadores['refugo'] = pd.to_numeric(df_indicadores['refugo'], errors='coerce')
@@ -85,6 +87,7 @@ def processar_incentivos_sincrono(
             # --- DADOS DE PERFORMANCE REAIS ---
             indicadores_reais = indicadores_map.get(cod_motorista_int, {})
             
+            # Converte de 0.0414 para 4.14 (multiplica por 100)
             dev_atingido = indicadores_reais.get('dev_pdv')
             if pd.notna(dev_atingido):
                 dev_atingido = dev_atingido * 100 
@@ -98,6 +101,7 @@ def processar_incentivos_sincrono(
                 refugo_atingido = refugo_atingido * 100
             # --- FIM DOS DADOS REAIS ---
 
+            # O resto da lógica de cálculo de prémios continua
             dev_passou = (dev_atingido is not None and dev_atingido <= metas_motorista.get("dev_pdv_meta_perc", 0))
             linha["dev_pdv_val"] = f"{dev_atingido:.2f}%" if dev_atingido is not None else "N/A"
             linha["dev_pdv_premio_val"] = metas_motorista.get("dev_pdv_premio", 0) if dev_passou else 0.0
@@ -113,6 +117,7 @@ def processar_incentivos_sincrono(
             linha["total_premio"] = linha["dev_pdv_premio_val"] + linha["rating_premio_val"] + linha["refugo_premio_val"]
             incentivo_motoristas.append(linha)
             
+            # Salva o RESULTADO (pass/fail) e os VALORES ATINGIDOS no mapa
             if linha["cod"]:
                 premio_motorista_map[linha["cod"]] = {
                     "dev_pdv_val": linha["dev_pdv_val"], "dev_pdv_passou": dev_passou,
@@ -142,7 +147,7 @@ def processar_incentivos_sincrono(
             premio_refugo_ajudante = metas_ajudante.get("refugo_premio", 0) if performance_herdada["refugo_passou"] else 0.0
             
             ajudante_data = {
-                "cpf": cpf_ajudante_map.get(cod_ajudante, ""),
+                "cpf": cpf_ajudante_map.get(cod_ajudante, ""), # <-- CPF REAL DO AJUDANTE
                 "cod": cod_ajudante,
                 "nome": nome_ajudante,
                 "dev_pdv_val": performance_herdada["dev_pdv_val"],
@@ -179,28 +184,24 @@ async def ler_relatorio_incentivo(
     metas = await run_in_threadpool(_get_metas_sincrono, supabase)
 
     # --- INÍCIO DA NOVA LÓGICA DE PERÍODO ---
-    # Converte a data de início do filtro para um objeto date
-    user_date_obj = datetime.date.fromisoformat(data_inicio_filtro)
-    
-    # Define o dia de corte do período de pagamento
-    dia_corte = 26
-    
-    if user_date_obj.day < dia_corte:
-        # A data pertence ao período que termina este mês
-        # Ex: user_date = 7 Nov -> período termina a 25 Nov
-        data_fim_periodo = user_date_obj.replace(day=25)
-        # O início foi no dia 26 do mês anterior
-        data_inicio_periodo = (user_date_obj.replace(day=1) - datetime.timedelta(days=1)).replace(day=dia_corte)
-    else:
-        # A data pertence ao período que começa este mês
-        # Ex: user_date = 27 Nov -> período começa a 26 Nov
-        data_inicio_periodo = user_date_obj.replace(day=dia_corte)
-        # O fim é no dia 25 do próximo mês
-        data_fim_periodo = (data_inicio_periodo + datetime.timedelta(days=32)).replace(day=25)
+    try:
+        user_date_obj = datetime.date.fromisoformat(data_inicio_filtro)
+        dia_corte = 26
+        
+        if user_date_obj.day < dia_corte:
+            data_fim_periodo = user_date_obj.replace(day=25)
+            data_inicio_periodo = (user_date_obj.replace(day=1) - datetime.timedelta(days=1)).replace(day=dia_corte)
+        else:
+            data_inicio_periodo = user_date_obj.replace(day=dia_corte)
+            data_fim_periodo = (data_inicio_periodo + datetime.timedelta(days=32)).replace(day=25)
 
-    # Converte de volta para strings
-    data_inicio_periodo_str = data_inicio_periodo.isoformat()
-    data_fim_periodo_str = data_fim_periodo.isoformat()
+        data_inicio_periodo_str = data_inicio_periodo.isoformat()
+        data_fim_periodo_str = data_fim_periodo.isoformat()
+    except ValueError:
+        # Lida com datas inválidas
+        error_message = "Formato de data inválido."
+        data_inicio_periodo_str = data_inicio_filtro
+        data_fim_periodo_str = data_fim_filtro
     # --- FIM DA NOVA LÓGICA DE PERÍODO ---
 
 
@@ -218,7 +219,7 @@ async def ler_relatorio_incentivo(
     if error_cadastro and not error_message:
         error_message = error_cadastro
     
-    # 3. Buscar dados de INDICADORES (Usa as datas do PERÍODO CALCULADO)
+    # --- ALTERAÇÃO: 3. Buscar dados de INDICADORES (Usa as datas do PERÍODO CALCULADO) ---
     df_indicadores, error_indicadores = await run_in_threadpool(
         get_indicadores_sincrono,
         supabase,
@@ -227,6 +228,7 @@ async def ler_relatorio_incentivo(
     )
     if error_indicadores and not error_message:
         error_message = error_indicadores
+    # --- FIM DA ALTERAÇÃO ---
     
     # Remove duplicatas do DataFrame de viagens
     if error_message is None and df_viagens is not None:
@@ -247,7 +249,7 @@ async def ler_relatorio_incentivo(
     else:
         incentivo_motoristas, incentivo_ajudantes = await run_in_threadpool(
             processar_incentivos_sincrono,
-            df_viagens,
+            None, # Passa None se houver erro, para evitar crash
             df_cadastro,
             df_indicadores,
             metas

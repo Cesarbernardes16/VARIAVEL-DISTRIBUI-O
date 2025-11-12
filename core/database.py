@@ -26,6 +26,7 @@ def get_dados_apurados(
         page_size = 1000
         page = 0
         while True:
+            # Assumindo que a tabela 'Distribuição' está no schema 'public'
             query = (
                 supabase.table(NOME_DA_TABELA)
                 .select("*")
