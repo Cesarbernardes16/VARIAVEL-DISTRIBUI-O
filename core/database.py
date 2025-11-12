@@ -7,7 +7,7 @@ from .analysis import limpar_texto # Importa da mesma pasta 'core'
 NOME_DA_TABELA = "Distribuição"
 NOME_COLUNA_DATA = "DATA"
 
-# --- FUNÇÃO 1 (Existente e Corrigida) ---
+# --- FUNÇÃO 1 (Existente) ---
 def get_dados_apurados(
     supabase: Client, 
     data_inicio_str: str, 
@@ -26,7 +26,6 @@ def get_dados_apurados(
         page_size = 1000
         page = 0
         while True:
-            # Assumindo que a tabela 'Distribuição' está no schema 'public'
             query = (
                 supabase.table(NOME_DA_TABELA)
                 .select("*")
@@ -77,13 +76,12 @@ def get_dados_apurados(
 
     return df, None
 
-# --- FUNÇÃO 2 (CORRIGIDA) ---
+# --- FUNÇÃO 2 (Existente) ---
 def get_cadastro_sincrono(supabase: Client) -> Tuple[Optional[pd.DataFrame], Optional[str]]:
     """
     Busca todos os dados da tabela de cadastro (public.Cadastro).
     """
     try:
-        # --- ALTERAÇÃO AQUI: Remove o .schema("Variavel") ---
         response = supabase.table("Cadastro").select("*").execute()
         
         if not response.data:
@@ -107,3 +105,40 @@ def get_cadastro_sincrono(supabase: Client) -> Tuple[Optional[pd.DataFrame], Opt
         if "relation" in str(e) and "does not exist" in str(e):
              return None, "Erro: A tabela 'Cadastro' não existe no schema 'public'."
         return None, "Erro ao conectar à tabela de Cadastro."
+
+# --- FUNÇÃO 3 (Nova) ---
+def get_indicadores_sincrono(
+    supabase: Client, 
+    data_inicio_str: str, 
+    data_fim_str: str
+) -> Tuple[Optional[pd.DataFrame], Optional[str]]:
+    """
+    Busca os resultados consolidados da tabela 'Resultados_Indicadores'.
+    """
+    try:
+        # Busca os indicadores onde o período de pagamento corresponde
+        # exatamente ao selecionado pelo utilizador.
+        response = (
+            supabase.table("Resultados_Indicadores")
+            .select("*")
+            .eq("data_inicio_periodo", data_inicio_str)
+            .eq("data_fim_periodo", data_fim_str)
+            .execute()
+        )
+        
+        if not response.data:
+            # Não é um erro, apenas não há dados de indicador para este período
+            return pd.DataFrame(), None 
+        
+        df_indicadores = pd.DataFrame(response.data)
+        df_indicadores.columns = df_indicadores.columns.str.strip()
+
+        return df_indicadores, None
+
+    except Exception as e:
+        print(f"Erro ao buscar dados de Indicadores: {e}")
+        if "permission denied" in str(e):
+            return None, "Erro de permissão. Execute 'GRANT ALL ON TABLE public.\"Resultados_Indicadores\" TO service_role;' no Supabase."
+        if "relation" in str(e) and "does not exist" in str(e):
+             return None, "Erro: A tabela 'Resultados_Indicadores' não existe no schema 'public'."
+        return None, "Erro ao conectar à tabela de Indicadores."

@@ -7,7 +7,7 @@ from fastapi.concurrency import run_in_threadpool
 from supabase import Client
 
 # Importa a nossa lógica partilhada
-from core.database import get_dados_apurados, get_cadastro_sincrono
+from core.database import get_dados_apurados, get_cadastro_sincrono, get_indicadores_sincrono
 from core.analysis import gerar_dashboard_e_mapas
 from .metas import _get_metas_sincrono
 
@@ -21,6 +21,7 @@ def get_supabase(request: Request) -> Client:
 def processar_incentivos_sincrono(
     df_viagens: Optional[pd.DataFrame], 
     df_cadastro: Optional[pd.DataFrame], 
+    df_indicadores: Optional[pd.DataFrame], # <-- DADOS REAIS
     metas: Dict[str, Any]
 ):
     
@@ -36,10 +37,11 @@ def processar_incentivos_sincrono(
         "rating_val": "N/A", "rating_passou": False,
         "refugo_val": "N/A", "refugo_passou": False,
     }
-
-    # --- ETAPA 1: Criar mapas de CPF a partir do Cadastro ---
+    
+    # --- ETAPA 1: Criar mapas de CPF e Indicadores ---
     cpf_motorista_map = {}
     cpf_ajudante_map = {}
+    indicadores_map = {}
 
     if df_cadastro is not None and not df_cadastro.empty:
         # Mapa de Motoristas (Codigo_M -> CPF_M)
@@ -56,31 +58,46 @@ def processar_incentivos_sincrono(
         df_ajudantes_cadastro['Codigo_J_int'] = df_ajudantes_cadastro['Codigo_J_int'].astype(int)
         cpf_ajudante_map = df_ajudantes_cadastro.set_index('Codigo_J_int')['CPF_J'].to_dict()
 
+    if df_indicadores is not None and not df_indicadores.empty:
+        # Mapa de Indicadores (Codigo_M -> Fila com resultados)
+        df_indicadores['dev_pdv'] = pd.to_numeric(df_indicadores['dev_pdv'], errors='coerce')
+        df_indicadores['Rating_tx'] = pd.to_numeric(df_indicadores['Rating_tx'], errors='coerce')
+        df_indicadores['refugo'] = pd.to_numeric(df_indicadores['refugo'], errors='coerce')
+        
+        indicadores_map = df_indicadores.set_index('Codigo_M').to_dict('index')
+
     
     # --- ETAPA 2: Processar Motoristas e Ajudantes REAIS (do df_viagens) ---
     
     if df_viagens is not None and not df_viagens.empty:
         
         # --- LÓGICA DOS MOTORISTAS ---
-        # 1. Encontra todos os motoristas únicos que trabalharam no período
         motoristas_no_periodo = df_viagens[['COD', 'MOTORISTA']].drop_duplicates(subset=['COD'])
 
         for _, motorista in motoristas_no_periodo.iterrows():
             linha = {}
             cod_motorista_int = int(motorista['COD'])
             
-            # Pega dados reais das viagens
-            linha["cpf"] = cpf_motorista_map.get(cod_motorista_int, "") # Busca CPF no mapa
+            linha["cpf"] = cpf_motorista_map.get(cod_motorista_int, "") 
             linha["cod"] = cod_motorista_int
             linha["nome"] = str(motorista.get('MOTORISTA', 'N/A')).strip()
 
-            # --- DADOS DE PERFORMANCE FALSOS (0%) CONFORME PEDIDO ---
-            dev_atingido = None # Será N/A
-            rating_atingido = None # Será N/A
-            refugo_atingido = None # Será N/A
-            # --- FIM DOS DADOS FALSOS ---
+            # --- DADOS DE PERFORMANCE REAIS ---
+            indicadores_reais = indicadores_map.get(cod_motorista_int, {})
+            
+            dev_atingido = indicadores_reais.get('dev_pdv')
+            if pd.notna(dev_atingido):
+                dev_atingido = dev_atingido * 100 
+            
+            rating_atingido = indicadores_reais.get('Rating_tx')
+            if pd.notna(rating_atingido):
+                rating_atingido = rating_atingido * 100
 
-            # O resto da lógica de cálculo de prémios continua
+            refugo_atingido = indicadores_reais.get('refugo')
+            if pd.notna(refugo_atingido):
+                refugo_atingido = refugo_atingido * 100
+            # --- FIM DOS DADOS REAIS ---
+
             dev_passou = (dev_atingido is not None and dev_atingido <= metas_motorista.get("dev_pdv_meta_perc", 0))
             linha["dev_pdv_val"] = f"{dev_atingido:.2f}%" if dev_atingido is not None else "N/A"
             linha["dev_pdv_premio_val"] = metas_motorista.get("dev_pdv_premio", 0) if dev_passou else 0.0
@@ -96,7 +113,6 @@ def processar_incentivos_sincrono(
             linha["total_premio"] = linha["dev_pdv_premio_val"] + linha["rating_premio_val"] + linha["refugo_premio_val"]
             incentivo_motoristas.append(linha)
             
-            # Salva o RESULTADO (pass/fail) e os VALORES ATINGIDOS no mapa
             if linha["cod"]:
                 premio_motorista_map[linha["cod"]] = {
                     "dev_pdv_val": linha["dev_pdv_val"], "dev_pdv_passou": dev_passou,
@@ -104,7 +120,7 @@ def processar_incentivos_sincrono(
                     "refugo_val": linha["refugo_val"], "refugo_passou": refugo_passou,
                 }
 
-        # --- LÓGICA DOS AJUDANTES (Quase inalterada) ---
+        # --- LÓGICA DOS AJUDANTES ---
         resultado_xadrez = gerar_dashboard_e_mapas(df_viagens)
         mapas = resultado_xadrez["mapas"]
         df_melted = resultado_xadrez["df_melted"]
@@ -126,7 +142,7 @@ def processar_incentivos_sincrono(
             premio_refugo_ajudante = metas_ajudante.get("refugo_premio", 0) if performance_herdada["refugo_passou"] else 0.0
             
             ajudante_data = {
-                "cpf": cpf_ajudante_map.get(cod_ajudante, ""), # <-- CPF REAL DO AJUDANTE
+                "cpf": cpf_ajudante_map.get(cod_ajudante, ""),
                 "cod": cod_ajudante,
                 "nome": nome_ajudante,
                 "dev_pdv_val": performance_herdada["dev_pdv_val"],
@@ -155,26 +171,62 @@ async def ler_relatorio_incentivo(
 ):
     
     hoje = datetime.date.today()
-    data_inicio = data_inicio or hoje.replace(day=1).isoformat()
-    data_fim = data_fim or hoje.isoformat()
+    # As datas do filtro do utilizador (ex: 01/11 a 11/11)
+    data_inicio_filtro = data_inicio or hoje.replace(day=1).isoformat()
+    data_fim_filtro = data_fim or hoje.isoformat()
     
     incentivo_motoristas, incentivo_ajudantes = [], []
     metas = await run_in_threadpool(_get_metas_sincrono, supabase)
 
-    # 1. Buscar dados de VIAGENS (para a lógica de motoristas E ajudantes)
+    # --- INÍCIO DA NOVA LÓGICA DE PERÍODO ---
+    # Converte a data de início do filtro para um objeto date
+    user_date_obj = datetime.date.fromisoformat(data_inicio_filtro)
+    
+    # Define o dia de corte do período de pagamento
+    dia_corte = 26
+    
+    if user_date_obj.day < dia_corte:
+        # A data pertence ao período que termina este mês
+        # Ex: user_date = 7 Nov -> período termina a 25 Nov
+        data_fim_periodo = user_date_obj.replace(day=25)
+        # O início foi no dia 26 do mês anterior
+        data_inicio_periodo = (user_date_obj.replace(day=1) - datetime.timedelta(days=1)).replace(day=dia_corte)
+    else:
+        # A data pertence ao período que começa este mês
+        # Ex: user_date = 27 Nov -> período começa a 26 Nov
+        data_inicio_periodo = user_date_obj.replace(day=dia_corte)
+        # O fim é no dia 25 do próximo mês
+        data_fim_periodo = (data_inicio_periodo + datetime.timedelta(days=32)).replace(day=25)
+
+    # Converte de volta para strings
+    data_inicio_periodo_str = data_inicio_periodo.isoformat()
+    data_fim_periodo_str = data_fim_periodo.isoformat()
+    # --- FIM DA NOVA LÓGICA DE PERÍODO ---
+
+
+    # 1. Buscar dados de VIAGENS (usa o filtro do utilizador)
     df_viagens, error_message = await run_in_threadpool(
         get_dados_apurados,
         supabase,
-        data_inicio,
-        data_fim,
+        data_inicio_filtro,
+        data_fim_filtro,
         search_str=""
     )
     
-    # 2. Buscar dados de CADASTRO (para o lookup de CPF)
+    # 2. Buscar dados de CADASTRO (CPFs)
     df_cadastro, error_cadastro = await run_in_threadpool(get_cadastro_sincrono, supabase)
-    
     if error_cadastro and not error_message:
         error_message = error_cadastro
+    
+    # 3. Buscar dados de INDICADORES (Usa as datas do PERÍODO CALCULADO)
+    df_indicadores, error_indicadores = await run_in_threadpool(
+        get_indicadores_sincrono,
+        supabase,
+        data_inicio_periodo_str, # <-- Data calculada
+        data_fim_periodo_str   # <-- Data calculada
+    )
+    if error_indicadores and not error_message:
+        error_message = error_indicadores
     
     # Remove duplicatas do DataFrame de viagens
     if error_message is None and df_viagens is not None:
@@ -183,17 +235,21 @@ async def ler_relatorio_incentivo(
         else:
             df_viagens = df_viagens.drop_duplicates()
     
-    # 3. Processar incentivos
-    # (Mesmo que df_viagens seja None por não ter viagens, 
-    # queremos processar df_cadastro para mostrar a lista de motoristas...
-    # ... Não, espera, a regra mudou!)
-    
-    # Nova Lógica: Se não houver viagens, as listas ficam vazias.
+    # 4. Processar incentivos
     if error_message is None:
         incentivo_motoristas, incentivo_ajudantes = await run_in_threadpool(
             processar_incentivos_sincrono,
-            df_viagens, # Pode ser None
-            df_cadastro, # Pode ser None
+            df_viagens,
+            df_cadastro,
+            df_indicadores, 
+            metas
+        )
+    else:
+        incentivo_motoristas, incentivo_ajudantes = await run_in_threadpool(
+            processar_incentivos_sincrono,
+            df_viagens,
+            df_cadastro,
+            df_indicadores,
             metas
         )
 
@@ -201,8 +257,8 @@ async def ler_relatorio_incentivo(
         "request": request, 
         "main_tab": "incentivo",
         "incentivo_tab": incentivo_tab,
-        "data_inicio_selecionada": data_inicio,
-        "data_fim_selecionada": data_fim,
+        "data_inicio_selecionada": data_inicio_filtro, # Mostra o filtro do utilizador
+        "data_fim_selecionada": data_fim_filtro,       # Mostra o filtro do utilizador
         "error_message": error_message,
         "incentivo_motoristas": incentivo_motoristas,
         "incentivo_ajudantes": incentivo_ajudantes,

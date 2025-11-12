@@ -224,7 +224,7 @@
                    class="{% if main_tab == 'xadrez' %}active{% endif %}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                         <path d="M1.5 0A1.5 1.5 0 0 0 0 1.5v13A1.5 1.5 0 0 0 1.5 16h13a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 14.5 0h-13zM2 1h12v1H2V1zm0 2h12v11H2V3z"/>
-                        <path d="M5 4.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-4zM10 3.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zM3 3.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zM3 11.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm8 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.AF5.5 0 0 1-.5-.5v-1z"/>
+                        <path d="M5 4.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-4zM10 3.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zM3 3.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zM3 11.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm8 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1z"/>
                     </svg>
                     Visão Geral (Xadrez)
                 </a>
@@ -426,7 +426,6 @@
                 {% if incentivo_tab == 'motoristas' %}
                 <div class="summary-table">
                     <h2>Incentivos: Motoristas ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
-                    <p>(Resultados de incentivo são baseados em dados de exemplo)</p>
                     <div class="table-wrapper">
                         <table class="incentivo-table">
                             <thead>
@@ -463,7 +462,7 @@
                                     <td class="total-row">R$ {{ "%.2f"|format(m.total_premio) }}</td>
                                 </tr>
                                 {% else %}
-                                <tr><td colspan="10">Nenhum dado de motorista encontrado.</td></tr>
+                                <tr><td colspan="10">Nenhum motorista trabalhou no período selecionado.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -498,7 +497,7 @@
                             </thead>
                             <tbody>
                                 {% if not incentivo_ajudantes %}
-                                <tr><td colspan="10">Nenhum ajudante encontrado no período selecionado.</td></tr>
+                                <tr><td colspan="10">Nenhum ajudante trabalhou no período selecionado.</td></tr>
                                 {% else %}
                                     {% for a in incentivo_ajudantes %}
                                     <tr>
