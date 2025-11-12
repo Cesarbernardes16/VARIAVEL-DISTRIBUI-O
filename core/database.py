@@ -128,7 +128,7 @@ def get_indicadores_sincrono(
         )
         
         if not response.data:
-            # Não é um erro, apenas não há dados de indicador para este período
+            # Não é um erro, apenas não há dados de indicador para este períodoo
             return pd.DataFrame(), None 
         
         df_indicadores = pd.DataFrame(response.data)
