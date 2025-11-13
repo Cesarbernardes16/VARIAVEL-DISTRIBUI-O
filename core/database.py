@@ -143,3 +143,43 @@ def get_indicadores_sincrono(
         if "relation" in str(e) and "does not exist" in str(e):
              return None, "Erro: A tabela 'Resultados_Indicadores' não existe no schema 'public'."
         return None, "Erro ao conectar à tabela de Indicadores."
+    # --- NOVA FUNÇÃO 4 (Adicionar esta ao final do ficheiro) ---
+def get_caixas_sincrono(
+    supabase: Client, 
+    data_inicio_str: str, 
+    data_fim_str: str
+) -> Tuple[Optional[pd.DataFrame], Optional[str]]:
+    """
+    Busca dados de caixas entregues da tabela 'Caixas'.
+    Assume que a tabela 'Caixas' tem as colunas 'data', 'mapa', 'caixas'.
+    """
+    try:
+        response = (
+            supabase.table("Caixas")
+            .select("data, mapa, caixas") # Seleciona as colunas que você criou
+            .gte("data", data_inicio_str)
+            .lte("data", data_fim_str)
+            .execute()
+        )
+        
+        if not response.data:
+            # Não é um erro, apenas não há dados de caixas no período
+            return pd.DataFrame(columns=["data", "mapa", "caixas"]), None 
+        
+        df_caixas = pd.DataFrame(response.data)
+        
+        # Converte tipos para garantir o cálculo correto
+        # Assegura que 'mapa' seja tratado como texto/objeto para agrupar
+        df_caixas['mapa'] = df_caixas['mapa'].astype(str)
+        df_caixas['caixas'] = pd.to_numeric(df_caixas['caixas'], errors='coerce')
+        df_caixas.dropna(subset=['mapa', 'caixas'], inplace=True)
+        
+        df_caixas['caixas'] = df_caixas['caixas'].astype(float) 
+
+        return df_caixas, None
+
+    except Exception as e:
+        print(f"Erro ao buscar dados de Caixas: {e}")
+        if "relation" in str(e) and "does not exist" in str(e):
+             return None, "Erro: A tabela 'Caixas' não existe no schema 'public'."
+        return None, "Erro ao conectar à tabela de Caixas."

@@ -88,7 +88,7 @@
         form { margin-bottom: 2em; display: flex; flex-wrap: wrap; gap: 1.5em; align-items: flex-end; }
         .form-group { display: flex; flex-direction: column; flex-grow: 1; }
         .date-group { display: flex; flex-direction: row; gap: 0.5em; flex-grow: 0; }
-        input[type="date"], input[type="number"], input[type="text"] {
+        input[type="date"], input[type="number"], input[type="text"], input[type="password"] {
             padding: 0.7em;
             line-height: 1.25;
             border-radius: 6px;
@@ -197,6 +197,10 @@
             font-weight: 500;
             color: #555;
         }
+        
+        /* --- NOVO: Estilo para a tabela de caixas --- */
+        .meta-caixas-table .col-nivel { text-align: left; width: 30%; font-weight: 500; }
+        .meta-caixas-table .input-group-addon-dias { margin-left: -0.5em; }
 
 
         .meta-row { background-color: #fffb8f; font-weight: bold; }
@@ -204,6 +208,72 @@
         .fail { background-color: #f8d7da; color: #721c24; }
         .total-row { background-color: #007bff; color: white; font-weight: bold; }
         .total-row td, .total-row { font-size: 1.1em; }
+
+        /* --- NOVO: Estilos do Modal de Senha --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 2.5em;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 450px;
+        }
+        .modal-content h2 {
+            margin-top: 0;
+            margin-bottom: 0.5em;
+        }
+        .form-group-modal {
+            margin: 1.5em 0;
+        }
+        .form-group-modal label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 0.5em;
+        }
+        .form-group-modal input[type="password"] {
+            width: 100%;
+            font-size: 1.2em;
+            padding: 0.5em;
+        }
+        .modal-error-msg {
+            color: #a00;
+            font-weight: 500;
+            margin-top: 0.5em;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1em;
+            margin-top: 2em;
+        }
+        .modal-btn {
+            padding: 0.8em 1.2em;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .modal-btn.cancel {
+            background-color: #eee;
+            color: #333;
+        }
+        .modal-btn.confirm {
+            background-color: #28a745; /* Verde */
+            color: white;
+        }
 
     </style>
 </head>
@@ -242,7 +312,7 @@
             <li>
                 <a href="/metas" class="{% if main_tab == 'metas' %}active{% endif %}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                         <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311a1.464 1.464 0 0 1-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.858 2.929 2.929 0 0 1 0 5.858z"/>
+                         <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311a1.464 1.464 0 0 1-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0 2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.858 2.929 2.929 0 0 1 0 5.858z"/>
                     </svg>
                     Painel de Gestão (Metas)
                 </a>
@@ -422,7 +492,6 @@
                 {% endif %}
 
             {% elif main_tab == 'incentivo' %}
-                
                 {% if incentivo_tab == 'motoristas' %}
                 <div class="summary-table">
                     <h2>Incentivos: Motoristas ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
@@ -519,12 +588,82 @@
                     </div>
                 </div>
                 {% endif %}
+                </div>
+                {% endif %}
 
+            {% elif main_tab == 'caixas' %}
+                <div class="summary-table">
+                    <h2>Bónus Caixas: Motoristas ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
+                    <div class="table-wrapper">
+                        <table class="incentivo-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-cpf">CPF</th>
+                                    <th class="col-cod">COD</th>
+                                    <th class="col-nome">NOME</th>
+                                    <th>CAIXAS ENTREGUES</th>
+                                    <th>VALOR P/ CAIXA</th>
+                                    <th>TOTAL R$</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for m in caixas_motoristas %}
+                                <tr>
+                                    <td class="col-cpf">{{ m.cpf }}</td>
+                                    <td class="col-cod">{{ m.cod }}</td>
+                                    <td class="col-nome">{{ m.nome }}</td>
+                                    <td>{{ "%.0f"|format(m.total_caixas) }}</td>
+                                    <td>R$ {{ "%.2f"|format(m.valor_por_caixa) }}</td>
+                                    <td class="total-row">R$ {{ "%.2f"|format(m.total_premio) }}</td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="6">Nenhum motorista entregou caixas no período.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="summary-table">
+                    <h2>Bónus Caixas: Ajudantes ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
+                    <div class="table-wrapper">
+                        <table class="incentivo-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-cpf">CPF</th>
+                                    <th class="col-cod">COD</th>
+                                    <th class="col-nome">NOME</th>
+                                    <th>CAIXAS (MAPAS)</th>
+                                    <th>VALOR P/ CAIXA</th>
+                                    <th>TOTAL R$</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for a in caixas_ajudantes %}
+                                <tr>
+                                    <td class="col-cpf">{{ a.cpf }}</td>
+                                    <td class="col-cod">{{ a.cod }}</td>
+                                    <td class="col-nome">{{ a.nome }}</td>
+                                    <td>{{ "%.0f"|format(a.total_caixas) }}</td>
+                                    <td>R$ {{ "%.2f"|format(a.valor_por_caixa) }}</td>
+                                    <td class="total-row">R$ {{ "%.2f"|format(a.total_premio) }}</td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="6">Nenhum ajudante participou em entregas de caixas no período.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% elif main_tab == 'metas' %}
+                
+                <form action="/metas" method="post" id="metas-form">
+                ```
             {% elif main_tab == 'metas' %}
                 
                 <form action="/metas" method="post" id="metas-form">
                     <div class="summary-table" style="width: 100%;">
-                        <h2>Metas de Incentivo: Motoristas</h2>
+                        <h2>Metas de Incentivo: Indicadores (Motoristas)</h2>
                         <div class="table-wrapper">
                             <table class="incentivo-table meta-form-table">
                                 <thead>
@@ -586,7 +725,7 @@
                     </div>
                 
                     <div class="summary-table" style="width: 100%;">
-                        <h2>Metas de Incentivo: Ajudantes</h2>
+                        <h2>Metas de Incentivo: Indicadores (Ajudantes)</h2>
                         <div class="table-wrapper">
                             <table class="incentivo-table meta-form-table">
                                 <thead>
@@ -647,18 +786,182 @@
                         </div>
                     </div>
                     
+                    <div class="summary-table" style="width: 100%;">
+                        <h2>Meta Caixa Entregue (por Antiguidade)</h2>
+                        <p style="font-size: 0.9em; color: #555; margin-bottom: 1em;">
+                            Estas regras de pagamento por caixa são aplicadas igualmente a Motoristas e Ajudantes.
+                        </p>
+                        
+                        <div class="table-wrapper">
+                            <table class="incentivo-table meta-form-table meta-caixas-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nível de Antiguidade</th>
+                                        <th>Dias (Limite Máximo da Faixa)</th>
+                                        <th>Valor por Caixa (R$)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="col-nivel">Nível 1</td>
+                                        <td>
+                                            <div class="input-group">
+                                                <input type="number" step="1" name="meta_cx_dias_n1" value="{{ metas.motorista.meta_cx_dias_n1 }}">
+                                                <span class="input-group-addon input-group-addon-dias">dias</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group">
+                                                <span class="input-group-addon">R$</span>
+                                                <input type="number" step="0.01" name="meta_cx_valor_n1" value="{{ metas.motorista.meta_cx_valor_n1 }}">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="col-nivel">Nível 2</td>
+                                        <td>
+                                            <div class="input-group">
+                                                <input type="number" step="1" name="meta_cx_dias_n2" value="{{ metas.motorista.meta_cx_dias_n2 }}">
+                                                <span class="input-group-addon input-group-addon-dias">dias</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group">
+                                                <span class="input-group-addon">R$</span>
+                                                <input type="number" step="0.01" name="meta_cx_valor_n2" value="{{ metas.motorista.meta_cx_valor_n2 }}">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="col-nivel">Nível 3</td>
+                                        <td>
+                                            <div class="input-group">
+                                                <input type="number" step="1" name="meta_cx_dias_n3" value="{{ metas.motorista.meta_cx_dias_n3 }}">
+                                                <span class="input-group-addon input-group-addon-dias">dias</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group">
+                                                <span class="input-group-addon">R$</span>
+                                                <input type="number" step="0.01" name="meta_cx_valor_n3" value="{{ metas.motorista.meta_cx_valor_n3 }}">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="col-nivel">Nível 4 (Acima do Nível 3)</td>
+                                        <td>
+                                            <div class="input-group">
+                                                <input type="number" step="1" name="meta_cx_dias_n4" value="{{ metas.motorista.meta_cx_dias_n4 }}">
+                                                <span class="input-group-addon input-group-addon-dias">dias</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group">
+                                                <span class="input-group-addon">R$</span>
+                                                <input type="number" step="0.01" name="meta_cx_valor_n4" value="{{ metas.motorista.meta_cx_valor_n4 }}">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                     <button type="submit" class="save-btn">Salvar Alterações</button>
                 </form>
             {% endif %}
 
-        </div> </div> <script>
-        document.querySelector('form').addEventListener('submit', function() {
-            var btn = document.querySelector('button[type="submit"]');
-            if (btn) {
-                btn.disabled = true;
-                btn.textContent = 'A carregar...';
-            }
-        });
+        </div> 
+    </div>
+    
+    {% if main_tab == 'metas' %}
+    <div id="passwordModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>Confirmar Alterações</h2>
+            <p>Você realmente deseja salvar as metas?</p>
+            <p style="font-size: 0.9em; color: #555;">Por favor, insira a senha de 4 dígitos para confirmar.</p>
+            
+            <div class="form-group-modal">
+                <label for="senhaMeta">Senha:</label>
+                <input type="password" id="senhaMeta" maxlength="4" pattern="\d*" inputmode="numeric">
+                <p id="modalError" class="modal-error-msg" style="display: none;">Senha incorreta.</p>
+            </div>
+            
+            <div class="modal-buttons">
+                <button type="button" id="cancelModalBtn" class="modal-btn cancel">Cancelar</button>
+                <button type="button" id="confirmModalBtn" class="modal-btn confirm">Confirmar e Salvar</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    <script>
+        // Pega o formulário de metas e o botão de salvar
+        const metasForm = document.getElementById('metas-form');
+        const saveBtn = document.querySelector('button.save-btn');
+        
+        // Pega os elementos do modal
+        const modal = document.getElementById('passwordModal');
+        const confirmBtn = document.getElementById('confirmModalBtn');
+        const cancelBtn = document.getElementById('cancelModalBtn');
+        const passwordInput = document.getElementById('senhaMeta');
+        const modalError = document.getElementById('modalError');
+
+        // Apenas adiciona o listener se estivermos na página de metas (se os elementos existirem)
+        if (metasForm && saveBtn && modal) {
+        
+            // 1. Quando o botão "Salvar Alterações" é clicado
+            saveBtn.addEventListener('click', function(event) {
+                // Impede o envio imediato do formulário
+                event.preventDefault(); 
+                
+                // Mostra o modal
+                modal.style.display = 'flex';
+                passwordInput.value = ''; // Limpa a senha
+                modalError.style.display = 'none'; // Esconde erro
+                passwordInput.focus(); // Foca no campo da senha
+            });
+
+            // 2. Quando o botão "Cancelar" do modal é clicado
+            cancelBtn.addEventListener('click', function() {
+                modal.style.display = 'none';
+            });
+
+            // 3. Quando o botão "Confirmar e Salvar" do modal é clicado
+            confirmBtn.addEventListener('click', function() {
+                const hardcodedPassword = "1111"; // Senha definida
+                
+                if (passwordInput.value === hardcodedPassword) {
+                    // Senha correta!
+                    
+                    // Desabilita o botão de salvar e mostra "A carregar..."
+                    saveBtn.disabled = true;
+                    saveBtn.textContent = 'A carregar...';
+                    
+                    // Esconde o modal
+                    modal.style.display = 'none';
+                    
+                    // Envia o formulário
+                    metasForm.submit();
+                    
+                } else {
+                    // Senha incorreta
+                    modalError.style.display = 'block';
+                    passwordInput.focus();
+                }
+            });
+        }
+
+        // Script antigo (para os outros formulários que não são de metas)
+        // Adiciona um listener genérico para os outros forms (Xadrez, Incentivo)
+        const mainForm = document.getElementById('main-form');
+        if (mainForm) {
+            mainForm.addEventListener('submit', function() {
+                var btn = this.querySelector('button[type="submit"]');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = 'A carregar...';
+                }
+            });
+        }
     </script>
 
 </body>

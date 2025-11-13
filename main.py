@@ -4,8 +4,9 @@ from fastapi.responses import Response
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-# Importa os nossos novos routers
+# Importa os nossos routers
 from routers import xadrez, incentivo, metas
+from routers import caixas # <--- ADICIONAR ESTA LINHA
 
 load_dotenv()
 
@@ -27,6 +28,7 @@ async def db_session_middleware(request: Request, call_next):
 app.include_router(xadrez.router)
 app.include_router(incentivo.router)
 app.include_router(metas.router)
+app.include_router(caixas.router) # <--- ADICIONAR ESTA LINHA
 
 # Rota do Favicon (continua aqui)
 @app.get("/favicon.ico", include_in_schema=False)
