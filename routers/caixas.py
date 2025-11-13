@@ -21,34 +21,29 @@ templates = Jinja2Templates(directory="templates")
 def get_supabase(request: Request) -> Client:
     return request.state.supabase
 
-# --- Função Helper para a Regra de Antiguidade ---
+# --- Função Helper para a Regra de Antiguidade (Inalterada) ---
 def _get_valor_por_caixa(dias_antiguidade: int, metas_colaborador: Dict[str, Any]) -> float:
     """
     Retorna o valor (R$) por caixa com base nos dias de antiguidade.
     """
     try:
-        # Nota: Usamos >= porque a sua regra era "passou de 365 dias"
-        
-        # Nível 4 (Mais que Nível 3)
-        # Devemos verificar do maior para o menor
+        # Verifica do maior para o menor
         if dias_antiguidade > metas_colaborador.get("meta_cx_dias_n3", 1825):
              return metas_colaborador.get("meta_cx_valor_n4", 0.0)
         
-        # Nível 3
         if dias_antiguidade > metas_colaborador.get("meta_cx_dias_n2", 730):
             return metas_colaborador.get("meta_cx_valor_n3", 0.0)
             
-        # Nível 2
         if dias_antiguidade > metas_colaborador.get("meta_cx_dias_n1", 365):
             return metas_colaborador.get("meta_cx_valor_n2", 0.0)
             
-        # Nível 1 (Até Nível 1)
+        # Nível 1 (Default)
         return metas_colaborador.get("meta_cx_valor_n1", 0.0)
         
     except Exception:
         return 0.0
 
-# --- Função Principal de Processamento ---
+# --- Função Principal de Processamento (LÓGICA CORRIGIDA) ---
 def processar_caixas_sincrono(
     df_viagens: Optional[pd.DataFrame], 
     df_cadastro: Optional[pd.DataFrame], 
@@ -62,7 +57,7 @@ def processar_caixas_sincrono(
     
     # --- 1. Criar Mapa de Antiguidade (Motoristas) ---
     motorista_antiguidade_map = {}
-    motorista_info_map = {} # Mapa para guardar (nome, cpf)
+    motorista_info_map = {} 
     
     if df_cadastro is not None:
         df_motoristas_cadastro = df_cadastro[pd.notna(df_cadastro['Codigo_M'])].drop_duplicates(subset=['Codigo_M'])
@@ -71,6 +66,7 @@ def processar_caixas_sincrono(
 
         for _, row in df_motoristas_cadastro.iterrows():
             cod = row['Codigo_M_int']
+            if cod == 0: continue
             data_inicio = row['Data_M_dt']
             dias = (hoje - data_inicio).days if data_inicio and pd.notna(data_inicio) else 0
             motorista_antiguidade_map[cod] = dias
@@ -81,7 +77,7 @@ def processar_caixas_sincrono(
 
     # --- 2. Criar Mapa de Antiguidade (Ajudantes) ---
     ajudante_antiguidade_map = {}
-    ajudante_info_map = {} # Mapa para guardar (nome, cpf)
+    ajudante_info_map = {}
     
     if df_cadastro is not None:
         df_ajudantes_cadastro = df_cadastro[pd.notna(df_cadastro['Codigo_J'])].drop_duplicates(subset=['Codigo_J'])
@@ -90,6 +86,7 @@ def processar_caixas_sincrono(
 
         for _, row in df_ajudantes_cadastro.iterrows():
             cod = row['Codigo_J_int']
+            if cod == 0: continue
             data_inicio = row['Data_J_dt']
             dias = (hoje - data_inicio).days if data_inicio and pd.notna(data_inicio) else 0
             ajudante_antiguidade_map[cod] = dias
@@ -98,30 +95,36 @@ def processar_caixas_sincrono(
                 "cpf": str(row.get('CPF_J', '')).strip()
             }
 
-    # --- 3. Criar Mapa de Caixas (Agrupado por Mapa) ---
+    # --- 3. Criar Mapa de Caixas (CORREÇÃO) ---
+    # Vamos assumir que a tabela 'Caixas' pode ter múltiplas entradas por mapa (transações)
+    # Por isso, o .groupby().sum() é a forma correta de obter o total de caixas por mapa.
     mapa_caixas_total = {}
     if df_caixas is not None:
-        # Agrupa por 'mapa' (que é str) e soma as 'caixas'
         mapa_caixas_total = df_caixas.groupby('mapa')['caixas'].sum().to_dict()
 
-    # --- 4. Acumular Caixas por Colaborador ---
-    # Dicionários para somar o total de caixas que cada um participou
+    # --- 4. Acumular Caixas por Colaborador (LÓGICA CORRIGIDA) ---
+    # Iteramos sobre o df_viagens (que NÃO FOI deduplicado)
+    # Cada linha é uma viagem (mapa) feita por uma equipa.
+    
     motorista_caixas_acumuladas = {}
     ajudante_caixas_acumuladas = {}
     
     colunas_ajudantes = [col for col in df_viagens.columns if col.startswith('CODJ_')]
 
     if df_viagens is not None:
+        # Agora iteramos sobre TODAS AS VIAGENS, sem deduplicar
         for _, viagem in df_viagens.iterrows():
             mapa_id = str(viagem.get('MAPA', ''))
+            
+            # Busca o total de caixas para este mapa_id UMA VEZ
             caixas_do_mapa = float(mapa_caixas_total.get(mapa_id, 0))
             
             if caixas_do_mapa == 0:
-                continue # Se o mapa não tem caixas, pula
+                continue # Se o mapa não existe na tabela Caixas, pula
             
             # Processa Motorista
             cod_motorista = int(viagem.get('COD', 0))
-            if cod_motorista > 0:
+            if cod_motorista in motorista_info_map: # Só processa se o motorista existe no cadastro
                 motorista_caixas_acumuladas[cod_motorista] = motorista_caixas_acumuladas.get(cod_motorista, 0) + caixas_do_mapa
                 
             # Processa Ajudantes
@@ -129,15 +132,17 @@ def processar_caixas_sincrono(
                 cod_ajudante = pd.to_numeric(viagem.get(col), errors='coerce')
                 if cod_ajudante and pd.notna(cod_ajudante):
                     cod_ajudante_int = int(cod_ajudante)
-                    ajudante_caixas_acumuladas[cod_ajudante_int] = ajudante_caixas_acumuladas.get(cod_ajudante_int, 0) + caixas_do_mapa
+                    if cod_ajudante_int in ajudante_info_map: # Só processa se o ajudante existe
+                        ajudante_caixas_acumuladas[cod_ajudante_int] = ajudante_caixas_acumuladas.get(cod_ajudante_int, 0) + caixas_do_mapa
 
     # --- 5. Montar Resultados Finais ---
     resultado_motoristas = []
-    for cod, info in motorista_info_map.items():
-        total_caixas = motorista_caixas_acumuladas.get(cod, 0)
-        if total_caixas == 0: # Se não entregou caixas, não aparece
+    # Itera sobre os motoristas que ENTREGARAM CAIXAS
+    for cod, total_caixas in motorista_caixas_acumuladas.items():
+        if total_caixas == 0:
             continue
             
+        info = motorista_info_map.get(cod, {"cpf": "N/A", "nome": f"COD {cod}"})
         dias = motorista_antiguidade_map.get(cod, 0)
         valor_cx = _get_valor_por_caixa(dias, metas_motorista)
         total_bonus = total_caixas * valor_cx
@@ -152,11 +157,12 @@ def processar_caixas_sincrono(
         })
 
     resultado_ajudantes = []
-    for cod, info in ajudante_info_map.items():
-        total_caixas = ajudante_caixas_acumuladas.get(cod, 0)
-        if total_caixas == 0: # Se não entregou caixas, não aparece
+    # Itera sobre os ajudantes que ENTREGARAM CAIXAS
+    for cod, total_caixas in ajudante_caixas_acumuladas.items():
+        if total_caixas == 0:
             continue
 
+        info = ajudante_info_map.get(cod, {"cpf": "N/A", "nome": f"COD {cod}"})
         dias = ajudante_antiguidade_map.get(cod, 0)
         valor_cx = _get_valor_por_caixa(dias, metas_ajudante)
         total_bonus = total_caixas * valor_cx
@@ -199,7 +205,7 @@ async def ler_relatorio_caixas(
         supabase,
         data_inicio_filtro,
         data_fim_filtro,
-        search_str="" # Sem filtro de nome por enquanto
+        search_str="" 
     )
     
     # --- 3. Buscar Cadastro (Para Antiguidade e Nomes) ---
@@ -217,19 +223,16 @@ async def ler_relatorio_caixas(
     if error_caixas and not error_message:
         error_message = error_caixas
     
-    # Limpa duplicados de df_viagens (baseado no mapa)
-    if error_message is None and df_viagens is not None:
-        if 'MAPA' in df_viagens.columns:
-            df_viagens = df_viagens.drop_duplicates(subset=['MAPA'])
-        else:
-            df_viagens = df_viagens.drop_duplicates()
+    # --- CORREÇÃO: REMOVIDO O 'drop_duplicates' DAQUI ---
+    # if error_message is None and df_viagens is not None:
+    #    ... (bloco drop_duplicates removido) ...
             
     # --- 5. Processar os dados ---
     resultado_motoristas, resultado_ajudantes = [], []
     if error_message is None:
         resultado_motoristas, resultado_ajudantes = await run_in_threadpool(
             processar_caixas_sincrono,
-            df_viagens,
+            df_viagens,     # Passa o df_viagens BRUTO (com duplicados)
             df_cadastro,
             df_caixas,
             metas
@@ -237,14 +240,13 @@ async def ler_relatorio_caixas(
 
     return templates.TemplateResponse("index.html", {
         "request": request, 
-        "main_tab": "caixas", # <-- Define a aba ativa
+        "main_tab": "caixas", 
         "data_inicio_selecionada": data_inicio_filtro,
         "data_fim_selecionada": data_fim_filtro,
         "error_message": error_message,
-        "caixas_motoristas": resultado_motoristas, # <-- Envia resultados
-        "caixas_ajudantes": resultado_ajudantes,   # <-- Envia resultados
+        "caixas_motoristas": resultado_motoristas, 
+        "caixas_ajudantes": resultado_ajudantes,   
         
-        # --- (Envia o resto dos dados para o template não falhar) ---
         "metas": metas,
         "incentivo_tab": "motoristas",
         "view_mode": "equipas_fixas", 
