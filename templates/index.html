@@ -198,7 +198,6 @@
             color: #555;
         }
         
-        /* --- NOVO: Estilo para a tabela de caixas --- */
         .meta-caixas-table .col-nivel { text-align: left; width: 30%; font-weight: 500; }
         .meta-caixas-table .input-group-addon-dias { margin-left: -0.5em; }
 
@@ -209,7 +208,7 @@
         .total-row { background-color: #007bff; color: white; font-weight: bold; }
         .total-row td, .total-row { font-size: 1.1em; }
 
-        /* --- NOVO: Estilos do Modal de Senha --- */
+        /* --- Estilos do Modal de Senha --- */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -274,7 +273,6 @@
             background-color: #28a745; /* Verde */
             color: white;
         }
-
     </style>
 </head>
 <body>
@@ -306,13 +304,24 @@
                         <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a.5.5 0 0 1-1 0v-2.5a.5.5 0 0 1 .5-.5zM3 11.4a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0v-1a.5.5 0 0 1 .5-.5zm2-1.4a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-1 0v-3a.5.5 0 0 1 .5-.5zm2-2.4a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-1 0v-5a.5.5 0 0 1 .5-.5zm2-2.4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5zm2-1.4a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-1 0v-9a.5.5 0 0 1 .5-.5zm2-1.4a.5.5 0 0 1 .5.5v11a.5.5 0 0 1-1 0v-11a.5.5 0 0 1 .5-.5z"/>
                         <path d="M12 1a1 1 0 0 1 1 1v10.5a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 0 12.5V2a1 1 0 0 1 1-1h11zm-1 2H2v9.5a1.5 1.5 0 0 0 1.5 1.5h8a1.5 1.5 0 0 0 1.5-1.5V3z"/>
                     </svg>
-                    Incentivo
+                    Incentivo (KPIs)
+                </a>
+            </li>
+            
+            <li>
+                <a href="/caixas?data_inicio={{ data_inicio_selecionada }}&data_fim={{ data_fim_selecionada }}"
+                   class="{% if main_tab == 'caixas' %}active{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-seam" viewBox="0 0 16 16">
+                        <path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5l2.405 1.374a.5.5 0 0 0 .372 0L7 3.5l1.186 1.113zM15 3.5l-2.405 1.374a.5.5 0 0 1-.372 0L9 3.5l-1.186 1.113a.5.5 0 0 0 .372 0L14.154 3.5z"/>
+                        <path d="M1 4.214a.5.5 0 0 0 0 .57l2.405 1.375a.5.5 0 0 0 .372 0L7 4.786l-1.186-1.113a.5.5 0 0 0-.372 0L1 4.214zM15 4.786l-2.405 1.375a.5.5 0 0 1-.372 0L9 4.786l1.186-1.113a.5.5 0 0 1 .372 0L15 4.214zM8 5.17L5.595 6.547a.5.5 0 0 1-.372 0L1 5.17v5.66l2.405 1.374a.5.5 0 0 0 .372 0L7 11.002v-5.66zm1 0v5.66l2.405 1.374a.5.5 0 0 0 .372 0L15 10.83V5.17l-2.405 1.373a.5.5 0 0 1-.372 0z"/>
+                    </svg>
+                    Bónus Caixas
                 </a>
             </li>
             <li>
                 <a href="/metas" class="{% if main_tab == 'metas' %}active{% endif %}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                         <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311a1.464 1.464 0 0 1-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0 2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.858 2.929 2.929 0 0 1 0 5.858z"/>
+                         <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311a1.464 1.464 0 0 1-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0 2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.858 2.929 2.929 0 0 1 0 5.858z"/>
                     </svg>
                     Painel de Gestão (Metas)
                 </a>
@@ -331,7 +340,9 @@
             {% if main_tab == 'xadrez' %}
                 Visão Geral (Xadrez)
             {% elif main_tab == 'incentivo' %}
-                Incentivo
+                Incentivo (KPIs)
+            {% elif main_tab == 'caixas' %}
+                Bónus Caixas
             {% elif main_tab == 'metas' %}
                 Painel de Gestão (Metas)
             {% endif %}
@@ -344,7 +355,8 @@
                     <input type="hidden" name="view_mode" value="{{ view_mode }}">
                 {% elif main_tab == 'incentivo' %}
                      <input type="hidden" name="incentivo_tab" value="{{ incentivo_tab }}">
-                {% endif %}
+                {% elif main_tab == 'caixas' %}
+                    {% endif %}
 
                 {% if main_tab != 'metas' %}
                 <div class="form-group date-group">
@@ -378,7 +390,16 @@
                         </div>
                     </div>
                 
-                {% elif main_tab == 'incentivo' %}
+                {% elif main_tab == 'incentivo' or main_tab == 'caixas' %}
+                    <div class="form-group search-bar" style="flex-grow: 1;">
+                        <div class="search-container">
+                            <button type="submit" class="full-width-btn">
+                                Atualizar Período
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {% if main_tab == 'incentivo' %}
                     <div class="form-group">
                         <label>Visualização (Incentivo):</label>
                         <div class="sub-nav-group button-group">
@@ -388,13 +409,7 @@
                             <label for="view_ajudantes">Ajudantes</label>
                         </div>
                     </div>
-                     <div class="form-group search-bar">
-                        <div class="search-container">
-                            <button type="submit" class="full-width-btn">
-                                Atualizar Período
-                            </button>
-                        </div>
-                    </div>
+                    {% endif %}
 
                 {% elif main_tab == 'metas' %}
                     {% endif %}
@@ -492,9 +507,10 @@
                 {% endif %}
 
             {% elif main_tab == 'incentivo' %}
+                
                 {% if incentivo_tab == 'motoristas' %}
                 <div class="summary-table">
-                    <h2>Incentivos: Motoristas ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
+                    <h2>Incentivos (KPIs): Motoristas ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
                     <div class="table-wrapper">
                         <table class="incentivo-table">
                             <thead>
@@ -503,7 +519,7 @@
                                     <th colspan="2">DEVOLUÇÃO PDV TT</th>
                                     <th colspan="2">RATING TX RESPOSTA</th>
                                     <th colspan="2">REFUGO</th>
-                                    <th>TOTAL</th>
+                                    <th>TOTAL R$</th>
                                 </tr>
                                 <tr class="meta-row">
                                     <th colspan="3">METAS</th>
@@ -540,7 +556,7 @@
                 
                 {% elif incentivo_tab == 'ajudantes' %}
                 <div class="summary-table">
-                    <h2>Incentivos: Ajudantes ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
+                    <h2>Incentivos (KPIs): Ajudantes ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
                     <div class="table-wrapper">
                         <table class="incentivo-table">
                             <thead>
@@ -551,7 +567,7 @@
                                     <th colspan="2">DEVOLUÇÃO (HERDADO)</th>
                                     <th colspan="2">RATING (HERDADO)</th>
                                     <th colspan="2">REFUGO (HERDADO)</th>
-                                    <th>TOTAL</th>
+                                    <th>TOTAL R$</th>
                                 </tr>
                                 <tr class="meta-row">
                                     <th colspan="3">METAS</th>
@@ -586,8 +602,6 @@
                             </tbody>
                         </table>
                     </div>
-                </div>
-                {% endif %}
                 </div>
                 {% endif %}
 
@@ -655,10 +669,7 @@
                         </table>
                     </div>
                 </div>
-            {% elif main_tab == 'metas' %}
-                
-                <form action="/metas" method="post" id="metas-form">
-                ```
+
             {% elif main_tab == 'metas' %}
                 
                 <form action="/metas" method="post" id="metas-form">
@@ -866,8 +877,10 @@
                             </table>
                         </div>
                     </div>
+                    
                     <button type="submit" class="save-btn">Salvar Alterações</button>
                 </form>
+            
             {% endif %}
 
         </div> 
