@@ -95,5 +95,6 @@ async def ler_relatorio_xadrez(
         "incentivo_tab": "motoristas",
         "incentivo_motoristas": [],
         "incentivo_ajudantes": [],
-        "metas": {}
+        "metas": {},
+        "caixas_tab": "motoristas",
     })

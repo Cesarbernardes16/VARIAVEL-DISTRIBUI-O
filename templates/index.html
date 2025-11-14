@@ -318,6 +318,7 @@
                     Bónus Caixas
                 </a>
             </li>
+            
             <li>
                 <a href="/metas" class="{% if main_tab == 'metas' %}active{% endif %}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -351,12 +352,14 @@
         <div class="container">
             
             <form action="{{ '/' if main_tab == 'xadrez' else '/' + main_tab }}" method="get" id="main-form">
+                
                 {% if main_tab == 'xadrez' %}
                     <input type="hidden" name="view_mode" value="{{ view_mode }}">
                 {% elif main_tab == 'incentivo' %}
                      <input type="hidden" name="incentivo_tab" value="{{ incentivo_tab }}">
                 {% elif main_tab == 'caixas' %}
-                    {% endif %}
+                     <input type="hidden" name="caixas_tab" value="{{ caixas_tab }}">
+                {% endif %}
 
                 {% if main_tab != 'metas' %}
                 <div class="form-group date-group">
@@ -381,25 +384,7 @@
                             <label for="view_resumo">Detalhado</label>
                         </div>
                     </div>
-                    <div class="form-group search-bar">
-                        <label for="search_query" class="sr-only">Buscar por nome</label>
-                        <div class="search-container">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>
-                            <input type="text" name="search_query" id="search_query" placeholder="Buscar por nome..." value="{{ search_query }}">
-                            <button type="submit">Gerar</button>
-                        </div>
-                    </div>
-                
-                {% elif main_tab == 'incentivo' or main_tab == 'caixas' %}
-                    <div class="form-group search-bar" style="flex-grow: 1;">
-                        <div class="search-container">
-                            <button type="submit" class="full-width-btn">
-                                Atualizar Período
-                            </button>
-                        </div>
-                    </div>
-                    
-                    {% if main_tab == 'incentivo' %}
+                {% elif main_tab == 'incentivo' %}
                     <div class="form-group">
                         <label>Visualização (Incentivo):</label>
                         <div class="sub-nav-group button-group">
@@ -409,12 +394,38 @@
                             <label for="view_ajudantes">Ajudantes</label>
                         </div>
                     </div>
-                    {% endif %}
+                {% elif main_tab == 'caixas' %}
+                    <div class="form-group">
+                        <label>Visualização (Bónus Caixas):</label>
+                        <div class="sub-nav-group button-group">
+                            <input type="radio" id="view_caixas_motoristas" name="caixas_tab" value="motoristas" {% if caixas_tab == 'motoristas' %}checked{% endif %} onchange="this.form.submit()">
+                            <label for="view_caixas_motoristas">Motoristas</label>
+                            <input type="radio" id="view_caixas_ajudantes" name="caixas_tab" value="ajudantes" {% if caixas_tab == 'ajudantes' %}checked{% endif %} onchange="this.form.submit()">
+                            <label for="view_caixas_ajudantes">Ajudantes</label>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                {% if main_tab == 'xadrez' %}
+                    <div class="form-group search-bar">
+                        <label for="search_query" class="sr-only">Buscar por nome</label>
+                        <div class="search-container">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>
+                            <input type="text" name="search_query" id="search_query" placeholder="Buscar por nome..." value="{{ search_query }}">
+                            <button type="submit">Gerar</button>
+                        </div>
+                    </div>
+                {% elif main_tab == 'incentivo' or main_tab == 'caixas' %}
+                    <div class="form-group search-bar" style="flex-grow: 1;">
+                        <div class="search-container">
+                            <button type="submit" class="full-width-btn">
+                                Atualizar Período
+                            </button>
+                        </div>
+                    </div>
+                {% endif %}
 
-                {% elif main_tab == 'metas' %}
-                    {% endif %}
             </form>
-
             {% if error_message %}
                 <div class="error-box">
                     <p><strong>{{ error_message }}</strong></p>
@@ -606,6 +617,8 @@
                 {% endif %}
 
             {% elif main_tab == 'caixas' %}
+                
+                {% if caixas_tab == 'motoristas' %}
                 <div class="summary-table">
                     <h2>Bónus Caixas: Motoristas ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
                     <div class="table-wrapper">
@@ -637,7 +650,8 @@
                         </table>
                     </div>
                 </div>
-
+                
+                {% elif caixas_tab == 'ajudantes' %}
                 <div class="summary-table">
                     <h2>Bónus Caixas: Ajudantes ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
                     <div class="table-wrapper">
@@ -669,6 +683,7 @@
                         </table>
                     </div>
                 </div>
+                {% endif %}
 
             {% elif main_tab == 'metas' %}
                 

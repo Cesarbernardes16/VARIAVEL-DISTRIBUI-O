@@ -268,4 +268,5 @@ async def ler_relatorio_incentivo(
         "search_query": "",
         "resumo_viagens": [],
         "dashboard_equipas": [],
+        "caixas_tab": "motoristas",
     })

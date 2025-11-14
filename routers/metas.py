@@ -138,6 +138,7 @@ async def ler_relatorio_metas(
         "dashboard_equipas": [],
         "incentivo_motoristas": [],
         "incentivo_ajudantes": [],
+        "caixas_tab": "motoristas",
     })
 
 # --- ALTERAÇÃO: Rota POST agora salva no Supabase ---
