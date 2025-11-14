@@ -69,6 +69,24 @@
             background-color: #007bff;
             color: white;
         }
+        /* --- NOVO: Estilo para botão de exportar --- */
+        .export-btn {
+            background-color: #1a73e8;
+            color: white;
+            padding: 0.8em 1.5em;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1em;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 1em;
+        }
+        .export-btn:hover {
+            background-color: #1765c4;
+        }
+
 
         .sidebar-footer {
             margin-top: auto; /* Empurra para o final */
@@ -307,7 +325,6 @@
                     Incentivo (KPIs)
                 </a>
             </li>
-            
             <li>
                 <a href="/caixas?data_inicio={{ data_inicio_selecionada }}&data_fim={{ data_fim_selecionada }}"
                    class="{% if main_tab == 'caixas' %}active{% endif %}">
@@ -319,6 +336,15 @@
                 </a>
             </li>
             
+            <li>
+                <a href="/pagamento?data_inicio={{ data_inicio_selecionada }}&data_fim={{ data_fim_selecionada }}"
+                   class="{% if main_tab == 'pagamento' %}active{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M1 3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3zm0 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V7zm0 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-1z"/>
+                    </svg>
+                    Resumo Pagamento
+                </a>
+            </li>
             <li>
                 <a href="/metas" class="{% if main_tab == 'metas' %}active{% endif %}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -344,6 +370,8 @@
                 Incentivo (KPIs)
             {% elif main_tab == 'caixas' %}
                 Bónus Caixas
+            {% elif main_tab == 'pagamento' %}
+                Resumo de Pagamento
             {% elif main_tab == 'metas' %}
                 Painel de Gestão (Metas)
             {% endif %}
@@ -359,6 +387,8 @@
                      <input type="hidden" name="incentivo_tab" value="{{ incentivo_tab }}">
                 {% elif main_tab == 'caixas' %}
                      <input type="hidden" name="caixas_tab" value="{{ caixas_tab }}">
+                {% elif main_tab == 'pagamento' %}
+                     <input type="hidden" name="pagamento_tab" value="{{ pagamento_tab }}">
                 {% endif %}
 
                 {% if main_tab != 'metas' %}
@@ -404,6 +434,16 @@
                             <label for="view_caixas_ajudantes">Ajudantes</label>
                         </div>
                     </div>
+                {% elif main_tab == 'pagamento' %}
+                    <div class="form-group">
+                        <label>Visualização (Resumo Pagamento):</label>
+                        <div class="sub-nav-group button-group">
+                            <input type="radio" id="view_pag_motoristas" name="pagamento_tab" value="motoristas" {% if pagamento_tab == 'motoristas' %}checked{% endif %} onchange="this.form.submit()">
+                            <label for="view_pag_motoristas">Motoristas</label>
+                            <input type="radio" id="view_pag_ajudantes" name="pagamento_tab" value="ajudantes" {% if pagamento_tab == 'ajudantes' %}checked{% endif %} onchange="this.form.submit()">
+                            <label for="view_pag_ajudantes">Ajudantes</label>
+                        </div>
+                    </div>
                 {% endif %}
                 
                 {% if main_tab == 'xadrez' %}
@@ -415,7 +455,7 @@
                             <button type="submit">Gerar</button>
                         </div>
                     </div>
-                {% elif main_tab == 'incentivo' or main_tab == 'caixas' %}
+                {% elif main_tab == 'incentivo' or main_tab == 'caixas' or main_tab == 'pagamento' %}
                     <div class="form-group search-bar" style="flex-grow: 1;">
                         <div class="search-container">
                             <button type="submit" class="full-width-btn">
@@ -678,6 +718,80 @@
                                 </tr>
                                 {% else %}
                                 <tr><td colspan="6">Nenhum ajudante participou em entregas de caixas no período.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+                
+            {% elif main_tab == 'pagamento' %}
+                
+                <a href="/pagamento/exportar?data_inicio={{ data_inicio_selecionada }}&data_fim={{ data_fim_selecionada }}"
+                   class="export-btn">
+                    Exportar Resumo (Excel)
+                </a>
+            
+                {% if pagamento_tab == 'motoristas' %}
+                <div class="summary-table">
+                    <h2>Resumo Pagamento: Motoristas ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
+                    <div class="table-wrapper">
+                        <table class="incentivo-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-cpf">CPF</th>
+                                    <th class="col-cod">COD</th>
+                                    <th class="col-nome">NOME</th>
+                                    <th>BÓNUS KPIs (R$)</th>
+                                    <th>BÓNUS CAIXAS (R$)</th>
+                                    <th>TOTAL A PAGAR (R$)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for m in pagamento_motoristas %}
+                                <tr>
+                                    <td class="col-cpf">{{ m.cpf }}</td>
+                                    <td class="col-cod">{{ m.cod }}</td>
+                                    <td class="col-nome">{{ m.nome }}</td>
+                                    <td>R$ {{ "%.2f"|format(m.premio_kpi) }}</td>
+                                    <td>R$ {{ "%.2f"|format(m.premio_caixas) }}</td>
+                                    <td class="total-row">R$ {{ "%.2f"|format(m.total_a_pagar) }}</td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="6">Nenhum motorista elegível para pagamento no período.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                {% elif pagamento_tab == 'ajudantes' %}
+                <div class="summary-table">
+                    <h2>Resumo Pagamento: Ajudantes ({{ data_inicio_selecionada }} até {{ data_fim_selecionada }})</h2>
+                    <div class="table-wrapper">
+                        <table class="incentivo-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-cpf">CPF</th>
+                                    <th class="col-cod">COD</th>
+                                    <th class="col-nome">NOME</th>
+                                    <th>BÓNUS KPIs (R$)</th>
+                                    <th>BÓNUS CAIXAS (R$)</th>
+                                    <th>TOTAL A PAGAR (R$)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for a in pagamento_ajudantes %}
+                                <tr>
+                                    <td class="col-cpf">{{ a.cpf }}</td>
+                                    <td class="col-cod">{{ a.cod }}</td>
+                                    <td class="col-nome">{{ a.nome }}</td>
+                                    <td>R$ {{ "%.2f"|format(a.premio_kpi) }}</td>
+                                    <td>R$ {{ "%.2f"|format(a.premio_caixas) }}</td>
+                                    <td class="total-row">R$ {{ "%.2f"|format(a.total_a_pagar) }}</td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="6">Nenhum ajudante elegível para pagamento no período.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -978,8 +1092,8 @@
             });
         }
 
-        // Script antigo (para os outros formulários que não são de metas)
-        // Adiciona um listener genérico para os outros forms (Xadrez, Incentivo)
+        // Script (para os outros formulários que não são de metas)
+        // Adiciona um listener genérico para os outros forms (Xadrez, Incentivo, Caixas, Pagamento)
         const mainForm = document.getElementById('main-form');
         if (mainForm) {
             mainForm.addEventListener('submit', function() {
